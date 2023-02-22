@@ -1,5 +1,7 @@
 ﻿#include <QCoreApplication>
+#ifdef Q_OS_WIN
 #include <Windows.h>
+#endif
 #include <iostream>
 #include <stdio.h>
 #include <QSettings>
@@ -252,17 +254,34 @@ void print_sep()
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
+    const int argumentCount = QCoreApplication::arguments().size();
+    const QStringList argumentList = QCoreApplication::arguments();
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
     QString ComPortName;
     FILE* input_file = 0;
+    QTextStream standardOutput(stdout);
 
     printVersion();
 
     //CHECK COMMAND FORMAT
-    if (argc < 2) {
-        ScanPort();
-        exitCode = EXIT_OK;
-        return exitCode;
+    switch (argumentCount)
+    {
+        case 1:
+            ScanPort();
+            exitCode = EXIT_OK;
+            return exitCode;
+        break;
+        case 2:
+            ComPortName = argumentList.at(1);
+            if(ComPortName.size()>4)
+            {
+                QString tmp = "\\\\.\\";
+                tmp.append(ComPortName);
+                ComPortName = tmp;
+            }
+        break;
+        default:
+        break;
     }
 
     //TODO: PARSE COMMAND FORMAT
@@ -270,12 +289,15 @@ int main(int argc, char *argv[])
 
     // Get the Comm Port of SiS Device
     //printf("\nSerial Port test:");
+#if 0
     exitCode = testserialport(&ComPortName);
     if (exitCode) {
         return exitCode;
     }
+#endif
 
     // OPEN LOCAL FIRMWARE BIN FILE
+#if 0
     input_file = open_firmware_bin(argv[1]);
     if ( !input_file )
     {
@@ -283,12 +305,11 @@ int main(int argc, char *argv[])
         exitCode = EXIT_ERR;
         return exitCode;
     }
+#endif
 
     // OPEN SIS UART COMM PORT
     qDebug() << "Open SiS" << ComPortName << "port";
     serial.setPortName(ComPortName);
-    QTextStream standardOutput(stdout);
-
     /*
      * 下面這些UART設定預設寫死的
      */

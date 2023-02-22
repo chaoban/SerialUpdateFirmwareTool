@@ -1,4 +1,6 @@
 ﻿#include "DoFirmwareUpdate.h"
+#include "QDebug"
+
 
 /**********************************************
 **　Update Flow
@@ -12,10 +14,140 @@
 **
 **********************************************/
 
+/*
+ * I2C Read Write Commands
+ */
+//static int sis_command_for_write(int wlength, unsigned char *wdata)
+int sis_command_for_write(int wlength, unsigned char *wdata)
+{
+    QTextStream standardOutput(stdout);
+    QByteArray writeData, appendData;
+    int ret = SIS_ERR;
+
+/*
+    for (int i=0; i < wlength; i++) {
+        printf("wdata[%i] = %x\n", i, wdata[i]);
+    }
+*/
+
+    //appendData = QByteArray((char*)wdata, wlength);
+    appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
+
+    writeData.resize(5);
+    writeData[0] = GR_UART_ID;
+    writeData[1] = GR_OP_WR;
+    writeData[2] = 0x80;
+    writeData[3] = 0x05;
+    writeData[4] = 0x00;
+
+    writeData.append(appendData);
+
+/*
+    for (int i =0; i < writeData.length(); i++) {
+        qDebug() << writeData[i];
+    }
+*/
+    const qint64 bytesWritten = serial.write(writeData);
+
+    if (bytesWritten == -1) {
+        standardOutput << QObject::tr("Failed to send the command to port %1, error: %2")
+                          .arg(serial.portName(), serial.errorString()) << Qt::endl;
+        ret = EXIT_ERR;
+    } else if (bytesWritten != writeData.size()) {
+        standardOutput << QObject::tr("Failed to send all the command to port %1, error: %2")
+                          .arg(serial.portName(), serial.errorString()) << Qt::endl;
+        ret = EXIT_ERR;
+    } else if (!serial.waitForBytesWritten(5000)) {
+        standardOutput << QObject::tr("Operation timed out or an error "
+                                      "occurred for port %1, error: %2")
+                          .arg(serial.portName(), serial.errorString()) << Qt::endl;
+        ret = EXIT_ERR;
+    }
+
+    return ret;
+}
+
+//static int sis_command_for_read(int rlength, unsigned char *rdata)
+int sis_command_for_read(int rlength, unsigned char *rdata)
+{
+    int ret = SIS_ERR;
+/*
+    struct i2c_msg msg[1];
+    msg[0].addr = client->addr;
+    msg[0].flags = I2C_M_RD;//Read
+    msg[0].len = rlength;
+    msg[0].buf = rdata;
+    ret = i2c_transfer(client->adapter, msg, 1);
+*/
+
+
+
+
+    return ret;
+}
+
+
+/*
+ * Change Mode
+ */
 
 bool sis_switch_to_cmd_mode()
 {
-    return EXIT_OK;
+    int ret = -1;
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+    uint8_t sis817_cmd_active[5] = {SIS_REPORTID, 0x00/*CRC16*/, 0x85, 0x51, 0x09};
+    //uint8_t test_cmd[4] = {0x50, 0x38, 0x31, 0x30};
+    uint8_t sis817_cmd_enable_diagnosis[5] = {SIS_REPORTID, 0x00/*CRC16*/, 0x85, 0x21, 0x01};
+
+    //Send 85 CMD - PWR_CMD_ACTIVE
+    //ret = sis_command_for_write(sizeof(test_cmd), test_cmd);
+    ret = sis_command_for_write(sizeof(sis817_cmd_active), sis817_cmd_active);
+    if(ret < 0){
+        qDebug() << "SiS SEND Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
+        return false;
+    }
+
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    if(ret < 0){
+        qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
+        return false;
+    }
+
+    if((tmpbuf[BUF_ACK_PLACE_L] == BUF_NACK_L) && (tmpbuf[BUF_ACK_PLACE_H] == BUF_NACK_H)){
+        qDebug() << "SiS SEND Switch CMD Return NACK - 85(PWR_CMD_ACTIVE)\n";
+        return false;
+     }
+     else if((tmpbuf[BUF_ACK_PLACE_L] != BUF_ACK_L) || (tmpbuf[BUF_ACK_PLACE_H] != BUF_ACK_H)){
+        qDebug() << "SiS SEND Switch CMD Return Unknow- 85(PWR_CMD_ACTIVE)\n";
+        return false;
+     }
+
+     //msleep(100);
+     memset(tmpbuf, 0, sizeof(tmpbuf));
+
+     //Send 85 CMD - ENABLE_DIAGNOSIS_MODE
+     ret = sis_command_for_write(sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
+     if(ret < 0){
+        qDebug() << "SiS SEND Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
+        return false;
+      }
+
+     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+     if(ret < 0){
+        qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
+        return false;
+     }
+
+     if((tmpbuf[BUF_ACK_PLACE_L] == BUF_NACK_L) && (tmpbuf[BUF_ACK_PLACE_H] == BUF_NACK_H)){
+        qDebug() << "SiS SEND Switch CMD Return NACK - 85(ENABLE_DIAGNOSIS_MODE)\n";
+        return false;
+     }else if((tmpbuf[BUF_ACK_PLACE_L] != BUF_ACK_L) || (tmpbuf[BUF_ACK_PLACE_H] != BUF_ACK_H)){
+        qDebug() << "SiS SEND Switch CMD Return Unknow- 85(ENABLE_DIAGNOSIS_MODE)\n";
+        return false;
+     }
+
+    //msleep(50);
+    return true;
 }
 
 bool sis_switch_to_work_mode()
@@ -161,10 +293,14 @@ int Do_Update()
     qDebug() << "Update Firmware by" <<  serial.portName() << "port";
     /*
      * Switch FW Mode
-     * sis_switch_to_cmd_mode
      */
     printf("Switch FW Mode\n");
     print_sep();
+
+    if (!sis_switch_to_cmd_mode())
+    {
+        return EXIT_ERR;
+    }
 
 
 
