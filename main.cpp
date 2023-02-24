@@ -12,12 +12,19 @@
 #include "version.h"
 #include "ExitStatus.h"
 
-#pragma comment(lib, "Advapi32.lib")
+//#pragma comment(lib, "Advapi32.lib")
 
-#define SIS_VERIFY {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44}
-#define SIS_ACK {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}
+#if 0
+#define SIS_VERIFY {0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
+#define SIS_ACK {0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
+#define SIS_VERIFY_LENGTH 11
+#else
+#define SIS_VERIFY {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
+#define SIS_ACK {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
 #define SIS_VERIFY_LENGTH 12
-#define TIMEOUT_TIME 3000
+#endif
+
+#define TIMEOUT_TIME 3000//3000
 
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
@@ -82,7 +89,7 @@ int testserialport(QString *ComPortName)
     QStringList comports = getComportRegKey();
 
     int portAmount = comports.size();
-    if( portAmount == NULL )
+    if( portAmount == 0 )
     {
         printf("Error : cannot find any existing com port, please attach UART/USB adapter.\n");
         return CT_EXIT_NO_COMPORT;
@@ -189,11 +196,13 @@ int testserialport(QString *ComPortName)
         else
         {
             printf("verifying key mismatched\n");
+#if 0
             for( int i=0; i<inByteCount; i++ )
             {
                 printf("%x,", SerialBuffer[i]);
             }
             printf("\n\n");
+#endif
             CloseHandle( hComm );
             continue;
         }
@@ -260,6 +269,7 @@ int main(int argc, char *argv[])
     QString ComPortName;
     FILE* input_file = 0;
     QTextStream standardOutput(stdout);
+    bool userassign = false;
 
     printVersion();
 
@@ -268,8 +278,9 @@ int main(int argc, char *argv[])
     {
         case 1:
             ScanPort();
-            exitCode = EXIT_OK;
-            return exitCode;
+            exitCode = testserialport(&ComPortName);
+            userassign = true;
+            return exitCode;  //CHAOBAN TEST FOR DEBUG
         break;
         case 2:
             ComPortName = argumentList.at(1);
@@ -279,6 +290,7 @@ int main(int argc, char *argv[])
                 tmp.append(ComPortName);
                 ComPortName = tmp;
             }
+            userassign = true;
         break;
         default:
         break;
@@ -289,12 +301,12 @@ int main(int argc, char *argv[])
 
     // Get the Comm Port of SiS Device
     //printf("\nSerial Port test:");
-#if 0
-    exitCode = testserialport(&ComPortName);
-    if (exitCode) {
-        return exitCode;
-    }
-#endif
+    if (!userassign) {
+        exitCode = testserialport(&ComPortName);
+        if (exitCode) {
+            return exitCode;
+        }
+     }
 
     // OPEN LOCAL FIRMWARE BIN FILE
 #if 0
@@ -369,7 +381,9 @@ int main(int argc, char *argv[])
         fclose(input_file);
     }
 
-    serial.close();
+    if(serial.isOpen()) {
+        serial.close();
+    }
 
     return exitCode;
 

@@ -1,6 +1,8 @@
 ﻿#include "DoFirmwareUpdate.h"
 #include "QDebug"
 
+//#define CHAOBAN_TEST    1
+
 
 /**********************************************
 **　Update Flow
@@ -22,7 +24,7 @@ int sis_command_for_write(int wlength, unsigned char *wdata)
 {
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
-    int ret = SIS_ERR;
+    int ret = EXIT_OK;
 
 /*
     for (int i=0; i < wlength; i++) {
@@ -30,58 +32,88 @@ int sis_command_for_write(int wlength, unsigned char *wdata)
     }
 */
 
+    appendData = QByteArray::fromRawData((char*)wdata, wlength);
     //appendData = QByteArray((char*)wdata, wlength);
-    appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
+    //appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
 
+#ifdef CHAOBAN_TEST
+    writeData.resize(4);
+    writeData[0] = 0x50;
+    writeData[1] = 0x38;
+    writeData[2] = 0x31;
+    writeData[3] = 0x30;
+#else
     writeData.resize(5);
     writeData[0] = GR_UART_ID;
     writeData[1] = GR_OP_WR;
     writeData[2] = 0x80;
     writeData[3] = 0x05;
     writeData[4] = 0x00;
+#endif
 
-    writeData.append(appendData);
+    //writeData.append(appendData);
 
 /*
     for (int i =0; i < writeData.length(); i++) {
-        qDebug() << writeData[i];
+        qDebug() << writeData[i] << " ";
     }
 */
-    const qint64 bytesWritten = serial.write(writeData);
+
+#ifdef CHAOBAN_TEST
+    qDebug() << "Write:" << writeData;
+#endif
+
+    const qint32 bytesWritten = serial.write(writeData);
 
     if (bytesWritten == -1) {
         standardOutput << QObject::tr("Failed to send the command to port %1, error: %2")
                           .arg(serial.portName(), serial.errorString()) << Qt::endl;
-        ret = EXIT_ERR;
+        ret = SIS_ERR;
     } else if (bytesWritten != writeData.size()) {
         standardOutput << QObject::tr("Failed to send all the command to port %1, error: %2")
                           .arg(serial.portName(), serial.errorString()) << Qt::endl;
-        ret = EXIT_ERR;
+        ret = SIS_ERR;
     } else if (!serial.waitForBytesWritten(5000)) {
         standardOutput << QObject::tr("Operation timed out or an error "
                                       "occurred for port %1, error: %2")
                           .arg(serial.portName(), serial.errorString()) << Qt::endl;
-        ret = EXIT_ERR;
+        ret = SIS_ERR;
     }
 
+#ifdef CHAOBAN_TEST
+    qDebug() << "bytesWritten=" << bytesWritten;
+#endif
     return ret;
 }
 
 //static int sis_command_for_read(int rlength, unsigned char *rdata)
 int sis_command_for_read(int rlength, unsigned char *rdata)
 {
-    int ret = SIS_ERR;
-/*
-    struct i2c_msg msg[1];
-    msg[0].addr = client->addr;
-    msg[0].flags = I2C_M_RD;//Read
-    msg[0].len = rlength;
-    msg[0].buf = rdata;
-    ret = i2c_transfer(client->adapter, msg, 1);
-*/
+    int ret = EXIT_OK;
 
+    //const QByteArray rbuffer = serial.readAll();
 
+    if(!serial.waitForReadyRead(-1)) { //block until new data arrives
+        qDebug() << "error: " << serial.errorString();
+        ret = SIS_ERR;
+    }
+    else{
+        qDebug() << "New data available: " << serial.bytesAvailable();
+        QByteArray rbuffer = serial.readAll();
 
+        rdata = (unsigned char *)rbuffer.data();
+        rlength = rbuffer.size();
+
+#ifdef CHAOBAN_TEST
+        qDebug() << "Read:" << rbuffer;
+
+        printf("rdata:");
+        for (int i=0; i < rlength; i++) {
+            printf("%x ",rdata[i]);
+        }
+        printf("\n");
+#endif
+    }
 
     return ret;
 }
@@ -95,12 +127,14 @@ bool sis_switch_to_cmd_mode()
 {
     int ret = -1;
     uint8_t tmpbuf[MAX_BYTE] = {0};
+#ifdef CHAOBAN_TEST
+    uint8_t sis817_cmd_active[12] = {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44};
+#else
     uint8_t sis817_cmd_active[5] = {SIS_REPORTID, 0x00/*CRC16*/, 0x85, 0x51, 0x09};
-    //uint8_t test_cmd[4] = {0x50, 0x38, 0x31, 0x30};
+#endif
     uint8_t sis817_cmd_enable_diagnosis[5] = {SIS_REPORTID, 0x00/*CRC16*/, 0x85, 0x21, 0x01};
 
     //Send 85 CMD - PWR_CMD_ACTIVE
-    //ret = sis_command_for_write(sizeof(test_cmd), test_cmd);
     ret = sis_command_for_write(sizeof(sis817_cmd_active), sis817_cmd_active);
     if(ret < 0){
         qDebug() << "SiS SEND Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
@@ -113,11 +147,11 @@ bool sis_switch_to_cmd_mode()
         return false;
     }
 
-    if((tmpbuf[BUF_ACK_PLACE_L] == BUF_NACK_L) && (tmpbuf[BUF_ACK_PLACE_H] == BUF_NACK_H)){
+    if((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)){
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(PWR_CMD_ACTIVE)\n";
         return false;
      }
-     else if((tmpbuf[BUF_ACK_PLACE_L] != BUF_ACK_L) || (tmpbuf[BUF_ACK_PLACE_H] != BUF_ACK_H)){
+     else if((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)){
         qDebug() << "SiS SEND Switch CMD Return Unknow- 85(PWR_CMD_ACTIVE)\n";
         return false;
      }
@@ -138,10 +172,10 @@ bool sis_switch_to_cmd_mode()
         return false;
      }
 
-     if((tmpbuf[BUF_ACK_PLACE_L] == BUF_NACK_L) && (tmpbuf[BUF_ACK_PLACE_H] == BUF_NACK_H)){
+     if((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)){
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
-     }else if((tmpbuf[BUF_ACK_PLACE_L] != BUF_ACK_L) || (tmpbuf[BUF_ACK_PLACE_H] != BUF_ACK_H)){
+     }else if((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)){
         qDebug() << "SiS SEND Switch CMD Return Unknow- 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
      }
@@ -233,7 +267,7 @@ bool sis_get_bootflag(quint32 *bootflag)
 }
 
 //static bool sis_get_fw_id(quint16 *fw_version)
-static bool sis_get_fw_id(quint16 *fw_version)
+bool sis_get_fw_id(quint16 *fw_version)
 {
     quint8 tmpbuf[MAX_BYTE] = {0};
     *fw_version = (tmpbuf[22] << 8) | (tmpbuf[23]);

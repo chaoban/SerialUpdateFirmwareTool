@@ -10,6 +10,7 @@
 
 #define MAX_BYTE    64
 
+
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
     POWER_MODE_FWCTRL = 0x50,
@@ -48,8 +49,8 @@ extern void print_sep();
 
 //SIS UPDATE FW
 #define SIS_REPORTID            0x09
-#define BUF_ACK_PLACE_L         4
-#define BUF_ACK_PLACE_H         5
+#define BUF_ACK_LSB             0x09
+#define BUF_ACK_MSB             0x0A
 #define BUF_ACK_L				0xEF
 #define BUF_ACK_H				0xBE
 #define BUF_NACK_L				0xAD
