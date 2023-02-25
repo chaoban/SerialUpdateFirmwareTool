@@ -10,6 +10,7 @@ CONFIG -= app_bundle
 
 SOURCES += \
         DoFirmwareUpdate.cpp \
+        crc.c \
         main.cpp \
         scanserialport.cpp
 
@@ -17,6 +18,7 @@ SOURCES += \
 HEADERS += \
     DoFirmwareUpdate.h \
     ExitStatus.h \
+    crc.h \
     version.h
 
 

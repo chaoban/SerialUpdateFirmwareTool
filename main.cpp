@@ -26,17 +26,16 @@
 
 #define TIMEOUT_TIME 3000//3000
 
-int occupiedPortCount = 0;
-int timeOutPortCount = 0;
-bool mismatchKey = FALSE;
-
-QSerialPort serial;
-FILE* open_firmware_bin( const char* filename);
 int uartTest(QString *);
 void printVersion();
 void print_sep();
 extern int ScanPort();
 extern int Do_Update();
+QSerialPort serial;
+FILE* open_firmware_bin( const char* filename);
+int occupiedPortCount = 0;
+int timeOutPortCount = 0;
+bool mismatchKey = FALSE;
 
 const QStringList getComportRegKey()
 {
@@ -44,24 +43,21 @@ const QStringList getComportRegKey()
     QString keyPath = "HARDWARE\\DEVICEMAP\\SERIALCOMM";
     HKEY comsKey;
     LPCWSTR winKeyPath = (LPCWSTR) keyPath.constData();
-    if( RegOpenKey( HKEY_LOCAL_MACHINE, winKeyPath, &comsKey ) != ERROR_SUCCESS )
-    {
+    if( RegOpenKey( HKEY_LOCAL_MACHINE, winKeyPath, &comsKey ) != ERROR_SUCCESS ) {
         RegCloseKey( comsKey );
         return comports;
     }
 
     QSettings settings( QString("HKEY_LOCAL_MACHINE\\")+keyPath, QSettings::NativeFormat );
     QStringList keys = settings.allKeys();
-    foreach( const QString &key, keys )
-    {
+    foreach( const QString &key, keys ) {
         QString newKey(key);
         newKey.replace( QString("/"), QString("\\") );
         LPCWSTR winKey = (LPCWSTR) newKey.constData();
         char *szData = new char[101];
         DWORD dwType, dwLen=100;
         if( RegQueryValueEx( comsKey, winKey,
-                             NULL, &dwType, (unsigned char *)szData, &dwLen) == ERROR_SUCCESS )
-        {
+                             NULL, &dwType, (unsigned char *)szData, &dwLen) == ERROR_SUCCESS ) {
             comports.append( QString::fromUtf16( (ushort*)szData ) );
             printf("%s, ",QString::fromUtf16( (ushort*)szData ).toStdString().c_str() );
         }
@@ -70,7 +66,6 @@ const QStringList getComportRegKey()
 
     RegCloseKey( comsKey );
     return comports;
-
 }
 
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter)
@@ -89,19 +84,16 @@ int testserialport(QString *ComPortName)
     QStringList comports = getComportRegKey();
 
     int portAmount = comports.size();
-    if( portAmount == 0 )
-    {
+    if ( portAmount == 0 ) {
         printf("Error : cannot find any existing com port, please attach UART/USB adapter.\n");
         return CT_EXIT_NO_COMPORT;
     }
 
     printf("\nStart polling com port ...\n");
-    for(int pollingCount=portAmount-1; pollingCount>=0; pollingCount--)
-    {
+    for (int pollingCount=portAmount-1; pollingCount>=0; pollingCount--) {
         QString curPortName = comports.at(pollingCount);
         *ComPortName = curPortName;
-        if(curPortName.size()>4)
-        {
+        if (curPortName.size()>4) {
             QString tmp = "\\\\.\\";
             tmp.append(curPortName);
             curPortName = tmp;
@@ -118,15 +110,13 @@ int testserialport(QString *ComPortName)
         DCB tmpDCB;
         bool commState;
         commState = GetCommState(hComm, &tmpDCB);
-        if( hComm == INVALID_HANDLE_VALUE || commState == FALSE)
-        {
+        if ( hComm == INVALID_HANDLE_VALUE || commState == FALSE) {
             printf("Open %s failed\t--> Warning : this com port was occupied or no longer available\n", curPortName.toStdString().c_str());
             occupiedPortCount ++;
             CloseHandle( hComm );
             continue;
         }
-        else if( commState == TRUE )
-        {
+        else if ( commState == TRUE ) {
             tmpDCB.BaudRate = CBR_115200;
             tmpDCB.ByteSize = 8;
             tmpDCB.StopBits = ONESTOPBIT;
@@ -150,8 +140,7 @@ int testserialport(QString *ComPortName)
 
         HANDLE hThread;
         hThread = CreateThread(NULL, 0, RcvWaitProc, hComm, 0, NULL);
-        if( WaitForSingleObject(hThread, TIMEOUT_TIME) == WAIT_TIMEOUT )
-        {
+        if ( WaitForSingleObject(hThread, TIMEOUT_TIME) == WAIT_TIMEOUT ) {
             printf("Warning : receiver timeout\n");
             timeOutPortCount++;
 //            CloseHandle( hComm );
@@ -162,8 +151,7 @@ int testserialport(QString *ComPortName)
         char SerialBuffer[256];
         DWORD NoByteRead;
         int inByteCount = 0;
-        do
-        {
+        do {
             ReadFile( hComm,
                       &TempChar,
                       sizeof(TempChar),
@@ -178,23 +166,19 @@ int testserialport(QString *ComPortName)
 
         char verifyKey[] = SIS_ACK;
         mismatchKey = FALSE;
-        for( int i=0; i<inByteCount; i++ )
-        {
-            if( verifyKey[i]!= SerialBuffer[i] )
-            {
+        for ( int i=0; i<inByteCount; i++ ) {
+            if ( verifyKey[i]!= SerialBuffer[i] ) {
                 mismatchKey = TRUE;
             }
         }
 
-        if(mismatchKey == FALSE)
-        {
+        if (mismatchKey == FALSE) {
             printf("verifying key matches for SiS Device.\n");
             CloseHandle( hComm );
             return CT_EXIT_PASS;
             break;
         }
-        else
-        {
+        else {
             printf("verifying key mismatched\n");
 #if 0
             for( int i=0; i<inByteCount; i++ )
@@ -211,16 +195,15 @@ int testserialport(QString *ComPortName)
     }
 
     printf("FAIL\n");
-    if( occupiedPortCount>0 )
-    {
+    if ( occupiedPortCount>0 ) {
         printf("(Open com port fail, some com ports were occupied)\n");
     }
-    if(mismatchKey == TRUE)
-    {
+
+    if (mismatchKey == TRUE) {
         printf("(Verifying key mismatch)\n");
     }
-    if(timeOutPortCount>0)
-    {
+
+    if (timeOutPortCount>0) {
         printf("(UART RX no response)\n");
     }
 
@@ -235,12 +218,10 @@ FILE* open_firmware_bin( const char* filename)
 
     err = fopen_s( &input_file, filename, "r" );
 
-    if ( err == 0 )
-    {
+    if ( err == 0 ) {
         printf( "Open firmware %s Success.\n", filename );
     }
-    else
-    {
+    else {
         printf( "ERROR, Can not open firmware %s.\n", filename );
         return 0;
     }
@@ -273,9 +254,8 @@ int main(int argc, char *argv[])
 
     printVersion();
 
-    //CHECK COMMAND FORMAT
-    switch (argumentCount)
-    {
+    /* CHECK COMMAND ARGUMENTS */
+    switch (argumentCount) {
         case 1:
             ScanPort();
             exitCode = testserialport(&ComPortName);
@@ -298,8 +278,8 @@ int main(int argc, char *argv[])
 
     //TODO: PARSE COMMAND FORMAT
 
+    /* Get the Comm Port of SiS Device */
 
-    // Get the Comm Port of SiS Device
     //printf("\nSerial Port test:");
     if (!userassign) {
         exitCode = testserialport(&ComPortName);
@@ -308,20 +288,20 @@ int main(int argc, char *argv[])
         }
      }
 
-    // OPEN LOCAL FIRMWARE BIN FILE
+    /* OPEN LOCAL FIRMWARE BIN FILE */
 #if 0
     input_file = open_firmware_bin(argv[1]);
-    if ( !input_file )
-    {
+    if ( !input_file ) {
         printf("Load Firmware Bin File Fails.\n");
         exitCode = EXIT_ERR;
         return exitCode;
     }
 #endif
 
-    // OPEN SIS UART COMM PORT
+    /* OPEN SIS UART COMM PORT */
     qDebug() << "Open SiS" << ComPortName << "port";
     serial.setPortName(ComPortName);
+
     /*
      * 下面這些UART設定預設寫死的
      */
@@ -333,7 +313,6 @@ int main(int argc, char *argv[])
 
     if (!serial.open(QIODevice::ReadWrite)) {
         standardOutput << QObject::tr("Failed to open port %1, error: %2")
-              //            .arg(curPortName).arg(serial.errorString())
                           .arg(ComPortName, serial.errorString())
                        << Qt::endl;
         return CT_EXIT_NO_COMPORT;
@@ -341,52 +320,26 @@ int main(int argc, char *argv[])
 
     printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
 
-    // 1.UPDATE FW
+    /* UPDATE FW */
     //TODO: 傳遞Comm Port & Local Bin file給 Do_Update
     exitCode = Do_Update();
     if (exitCode) {
         return exitCode;
     }
 
+    /* GET FW ID */
 
-
-    // 2. GET FW ID
-
-
-
-
-
-    // 3. REVERSE
-
-
-
-
-/*
-    try
-    {
-       //TODO:
-    }
-    catch(const std::exception& e)
-    {
-        std::cout << e.what();
-    }
-    catch(...)
-    {
-        std::cout << "\nError : unknown expection" << std::endl;
-    }
-*/
     printf("\nExit code : %d\n", exitCode);
 
-    if(input_file) {
+    if (input_file) {
         fclose(input_file);
     }
 
-    if(serial.isOpen()) {
+    if (serial.isOpen()) {
         serial.close();
     }
 
     return exitCode;
-
     //  return 0;
     //  return a.exec();
 }

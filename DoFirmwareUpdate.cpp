@@ -8,11 +8,10 @@
 **　Update Flow
 **
 ** 1.	Switch FW Mode
-** 2.	Get FW Information
-** 3.	Check FW Info
-** 4.	Check BootFlag
-** 5.	Check Bootloader ID and Bootloader CRC
-** 6.	Update FW
+** 2.	Check FW Info
+** 3.	Check BootFlag
+** 4.	Check Bootloader ID and Bootloader CRC
+** 5.	Update FW
 **
 **********************************************/
 
@@ -51,7 +50,7 @@ int sis_command_for_write(int wlength, unsigned char *wdata)
     writeData[4] = 0x00;
 #endif
 
-    //writeData.append(appendData);
+    writeData.append(appendData);
 
 /*
     for (int i =0; i < writeData.length(); i++) {
@@ -97,7 +96,7 @@ int sis_command_for_read(int rlength, unsigned char *rdata)
         qDebug() << "error: " << serial.errorString();
         ret = SIS_ERR;
     }
-    else{
+    else {
         qDebug() << "New data available: " << serial.bytesAvailable();
         QByteArray rbuffer = serial.readAll();
 
@@ -136,22 +135,22 @@ bool sis_switch_to_cmd_mode()
 
     //Send 85 CMD - PWR_CMD_ACTIVE
     ret = sis_command_for_write(sizeof(sis817_cmd_active), sis817_cmd_active);
-    if(ret < 0){
+    if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
     }
 
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
-    if(ret < 0){
+    if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
     }
 
-    if((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)){
+    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(PWR_CMD_ACTIVE)\n";
         return false;
      }
-     else if((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)){
+     else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return Unknow- 85(PWR_CMD_ACTIVE)\n";
         return false;
      }
@@ -161,21 +160,21 @@ bool sis_switch_to_cmd_mode()
 
      //Send 85 CMD - ENABLE_DIAGNOSIS_MODE
      ret = sis_command_for_write(sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
-     if(ret < 0){
+     if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
       }
 
      ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
-     if(ret < 0){
+     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
      }
 
-     if((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)){
+     if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
-     }else if((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)){
+     }else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return Unknow- 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
      }
@@ -277,6 +276,33 @@ bool sis_get_fw_id(quint16 *fw_version)
 //static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 {
+    int ret = 0;
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+    uint8_t sis_cmd_get_FW_INFO[CMD_86_BYTE] = {0x12, 0x04, 0x80, 0x09, 0x00,
+            0x09, 0x00, 0x86, 0x00, 0x40, 0x00, 0xa0, 0x34, 0x00};
+        //sis_cmd_get_FW_INFO[BUF_CRC_PLACE] = sis_calculate_output_crc( sis_cmd_get_FW_INFO, CMD_86_BYTE );
+        sis_cmd_get_FW_INFO[BUF_CRC_PLACE] =0x00;
+
+    // write
+    ret = sis_command_for_write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
+    if (ret < 0) {
+        printf("sis SEND Get FW ID CMD Failed - 86 %d\n", ret);
+        return -1;
+    }
+
+    // read
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+
+    /*pr_err("sis_get_fw_info read data:\n");
+    PrintBuffer(0, MAX_BYTE, tmpbuf);*/
+
+    *chip_id = tmpbuf[10];
+    *tp_size = (tmpbuf[11] << 16) | (tmpbuf[12] << 8) | (tmpbuf[13]);
+    *tp_vendor_id = (tmpbuf[14] << 24) | (tmpbuf[15] << 16) | (tmpbuf[16] << 8) | (tmpbuf[17]);
+    *task_id = (tmpbuf[18] << 8) | (tmpbuf[19]);
+    *chip_type = tmpbuf[21];
+    *fw_version = (tmpbuf[22] << 8) | (tmpbuf[23]);
+
     return EXIT_OK;
 }
 
@@ -324,19 +350,40 @@ bool sis_update_fw(quint8 *fn, bool update_boot)
 
 int Do_Update()
 {
+    quint8 chip_id = 0x00;
+    quint8 bin_chip_id = 0x00;
+    quint32 tp_size = 0x00000000;
+    quint32 bin_tp_size = 0x00000000;
+    quint32 tp_vendor_id = 0x00000000;
+    quint32 bin_tp_vendor_id = 0x00000000;
+    quint16 task_id = 0x0000;
+    quint16 bin_task_id = 0x0000;
+    quint8 chip_type = 0x00;
+    quint8 bin_chip_type = 0x00;
+    quint16 fw_version = 0x0000;
+    quint16 bin_fw_version = 0x0000;
+    quint32 bootloader_version = 0x00000000;
+    quint32 bin_bootloader_version = 0x00000000;
+    quint32 bootloader_crc_version = 0x00000000;
+    quint32 bin_bootloader_crc_version = 0x00000000;
+    quint32 bootflag = 0x00000000;
+    quint32 bin_bootflag = 0x00000000;
+    bool update_boot = false;
+    bool force_update = false;
+
+    int ret = -1;
+
     qDebug() << "Update Firmware by" <<  serial.portName() << "port";
     /*
      * Switch FW Mode
      */
     printf("Switch FW Mode\n");
-    print_sep();
 
-    if (!sis_switch_to_cmd_mode())
-    {
+    if (!sis_switch_to_cmd_mode()) {
+        qDebug() << "Error: sis_switch_to_cmd_mode Fails";
         return EXIT_ERR;
     }
-
-
+    print_sep();
 
 
     /*
@@ -344,6 +391,14 @@ int Do_Update()
      * sis_get_fw_info
      */
     printf("Get FW Information and Check FW Info\n");
+
+    //TODO:
+    //ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+
+    if (ret) {
+        printf("sis get fw info failed %d\n", ret);
+    }
+
     print_sep();
 
 
