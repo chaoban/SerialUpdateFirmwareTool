@@ -1,6 +1,8 @@
 ﻿#include "DoFirmwareUpdate.h"
 #include "QDebug"
 
+extern quint8 sis_calculate_output_crc( quint8* buf, int len );
+
 //#define CHAOBAN_TEST    1
 
 
@@ -43,20 +45,20 @@ int sis_command_for_write(int wlength, unsigned char *wdata)
     writeData[3] = 0x30;
 #else
     writeData.resize(5);
-    writeData[0] = GR_UART_ID;
-    writeData[1] = GR_OP_WR;
-    writeData[2] = 0x80;
-    writeData[3] = 0x05;
-    writeData[4] = 0x00;
+    writeData[BIT_UART_ID] = GR_UART_ID;
+    writeData[BIT_OP_LSB] = GR_OP_WR;
+    writeData[BIT_OP_MSB] = GR_OP;
+    writeData[BIT_SIZE_LSB] = wlength;
+    writeData[BIT_SIZE_MSB] = 0x00;
 #endif
 
     writeData.append(appendData);
 
-/*
+#if 1
     for (int i =0; i < writeData.length(); i++) {
         qDebug() << writeData[i] << " ";
     }
-*/
+#endif
 
 #ifdef CHAOBAN_TEST
     qDebug() << "Write:" << writeData;
@@ -278,10 +280,16 @@ bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, q
 {
     int ret = 0;
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    uint8_t sis_cmd_get_FW_INFO[CMD_86_BYTE] = {0x12, 0x04, 0x80, 0x09, 0x00,
+    uint8_t sis_cmd_get_FW_INFO[CMD_86_SIZE] = {0x12, 0x04, 0x80, 0x09, 0x00,
             0x09, 0x00, 0x86, 0x00, 0x40, 0x00, 0xa0, 0x34, 0x00};
-        //sis_cmd_get_FW_INFO[BUF_CRC_PLACE] = sis_calculate_output_crc( sis_cmd_get_FW_INFO, CMD_86_BYTE );
-        sis_cmd_get_FW_INFO[BUF_CRC_PLACE] =0x00;
+    sis_cmd_get_FW_INFO[BIT_CRC] = sis_calculate_output_crc( sis_cmd_get_FW_INFO, CMD_86_SIZE );
+
+//CHAOBAN TEST
+#if 0
+    uint8_t sis_cmd[CMD_85_SIZE] = {0x40, 0x01, 0x08, 0x00, 0x09,0x00, 0x85, 0x00, 0x51, 0x09};
+    sis_cmd[7] = sis_calculate_output_crc( sis_cmd, CMD_85_SIZE );
+    printf("CRC=%x\n", sis_cmd[7]);
+#endif
 
     // write
     ret = sis_command_for_write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
@@ -374,15 +382,19 @@ int Do_Update()
     int ret = -1;
 
     qDebug() << "Update Firmware by" <<  serial.portName() << "port";
+
     /*
      * Switch FW Mode
      */
     printf("Switch FW Mode\n");
 
+#if 0
     if (!sis_switch_to_cmd_mode()) {
         qDebug() << "Error: sis_switch_to_cmd_mode Fails";
         return EXIT_ERR;
     }
+#endif
+
     print_sep();
 
 
@@ -392,8 +404,7 @@ int Do_Update()
      */
     printf("Get FW Information and Check FW Info\n");
 
-    //TODO:
-    //ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+    ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
 
     if (ret) {
         printf("sis get fw info failed %d\n", ret);
