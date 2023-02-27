@@ -1,12 +1,4 @@
-﻿#include "DoFirmwareUpdate.h"
-#include "QDebug"
-
-extern quint8 sis_calculate_output_crc( quint8* buf, int len );
-
-//#define CHAOBAN_TEST    1
-
-
-/**********************************************
+﻿/**********************************************
 **　Update Flow
 **
 ** 1.	Switch FW Mode
@@ -16,6 +8,17 @@ extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 ** 5.	Update FW
 **
 **********************************************/
+
+#include "DoFirmwareUpdate.h"
+#include "QDebug"
+
+extern quint8 sis_calculate_output_crc( quint8* buf, int len );
+//QByteArray sis_fw_data;
+uint8_t sis_fw_data[] = {
+//TODO: BINARY FILE
+};
+
+//#define CHAOBAN_TEST    1
 
 /*
  * I2C Read Write Commands
@@ -192,20 +195,6 @@ bool sis_switch_to_cmd_mode()
     return true;
 }
 
-bool sis_switch_to_work_mode()
-{
-    return EXIT_OK;
-}
-
-/*
- * Check Chip Status
- * Return: Ture is chip on the work function, else is chip not ready.
- */
-bool sis_check_fw_ready()
-{
-    return true;
-}
-
 
 /*
  * Change Chip to Power Mode
@@ -256,14 +245,6 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
             return POWER_MODE_ERR;
             break;
      }
-}
-
-/*
- * Software Reset
- */
-void sis_fw_softreset()
-{
-
 }
 
 //static bool sis_get_bootflag(quint32 *bootflag)
@@ -337,6 +318,12 @@ bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, q
     return EXIT_OK;
 }
 
+//static bool sis_reset_cmd()
+bool sis_reset_cmd()
+{
+    return EXIT_OK;
+}
+
 //static bool sis_write_fw_info(unsigned int addr, int pack_num)
 bool sis_write_fw_info(unsigned int addr, int pack_num)
 {
@@ -373,14 +360,11 @@ bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count)
 	unsigned int count_83 = 0, size_83 = 0; // count_83: address, size_83: length
 	unsigned int count_84 = 0, size_84 = 0; // count_84: address, size_84: length
 	unsigned int pack_num = 0;
-
     /*
      * sis_write_fw_info
      * sis_write_fw_payload
      * sis_flash_rom
     */
-	
-
     count_83 = addr;
     while (count_83 < end) {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
@@ -430,35 +414,69 @@ bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count)
     return EXIT_OK;
 }
 
-//static bool sis_reset_cmd()
-bool sis_reset_cmd()
-{
-    return EXIT_OK;
-}
-
 //static bool sis_update_fw(quint8 *fn, bool update_boot)
 bool sis_update_fw(quint8 *fn, bool update_boot)
 {
+    int ret = 0;
+
     /* (1) Clear boot flag */
-    /* sis_clear_bootflag() */
+    ret = sis_clear_bootflag();
+    if (ret) {
+        printf("sis Update fw fail at (1).");
+	    //TODO:
+        //goto release_firmware;
+    }
 
 
     /* (2) Update main code 1 */
     /* sis_update_block */
     /* 0x00007000 - 0x00016000 */
+    ret = sis_update_block(fn, 0x00007000, 0x00016000);
+    if (ret) {
+	    printf("sis Update fw fail at (2).");
+	    //TODO:
+        //goto release_firmware;
+    }
 
     /* (3) Update main code 2 */
     /* 0x00006000 - 0x00001000 */
+    ret = sis_update_block(fn, 0x00006000, 0x00001000);
+    if (ret) {
+	    printf("sis Update fw fail at (3).");
+	    //TODO:
+        //goto release_firmware;
+    }
 
     /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc */
     /* 0x00004000 - 0x00002000 */
+    ret = sis_update_block(fn, 0x00004000, 0x00002000);
+    if (ret) {
+        printf("sis Update fw fail at (4).");
+	    //TODO:
+        //goto release_firmware;
+    }
 
     /* if need update_boot */
     /* (5) Update boot code */
     /* 0x00000000 - 0x00004000 */
+    if (update_boot) {
+	    ret = sis_update_block(fn, 0x00000000, 0x00004000);
+	    if (ret) {
+		    printf("sis Update fw fail at (5).");
+		    //TODO:
+            //goto release_firmware;
+	    }
+}
 
     /* (6) Update rodata */
     /* 0x0001d000 - 0x00002000 */
+    ret = sis_update_block(fn, 0x0001d000, 0x00002000);
+    if (ret) {
+        printf("sis Update fw fail at (6).");
+	    //TODO:
+        //goto release_firmware;
+    }
+
 
     return EXIT_OK;
 }
@@ -552,11 +570,22 @@ int SISUpdateFlow()
      * sis_update_fw
      */
     printf("START FIRMWARE UPDATE!!!\n");
+    ret = sis_update_fw(sis_fw_data, update_boot);
+	if (ret) {
+		printf("sis update fw failed %d\n", ret);
+		return ret;
+	}
+
     print_sep();
 
     /* Reset */
-    // ret = sis_reset_cmd();
+    ret = sis_reset_cmd();
     printf("Reset SIS Device\n");
+    if (ret) {
+		printf("sis RESET failed %d\n", ret);
+		return ret;
+	}
+
     print_sep();
 
     /*
