@@ -501,6 +501,7 @@ int SISUpdateFlow()
     quint32 bin_bootloader_crc_version = 0x00000000;
     quint32 bootflag = 0x00000000;
     quint32 bin_bootflag = 0x00000000;
+
     bool update_boot = false;
     bool force_update = false;
 
@@ -562,8 +563,6 @@ int SISUpdateFlow()
      */
     printf("Check Bootloader ID and Bootloader CRC\n");
     print_sep();
-
-
 
     /*
      * Update FW

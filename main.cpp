@@ -33,6 +33,7 @@ extern int ScanPort();
 extern int SISUpdateFlow();
 QSerialPort serial;
 FILE* open_firmware_bin( const char* filename);
+int readBinary(QString);
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
@@ -233,7 +234,36 @@ FILE* open_firmware_bin( const char* filename)
     printf( "Pattern file contains %i bytes\n", file_size );
 
     fseek( input_file, 0, SEEK_SET );
+
     return input_file;
+}
+
+int readBinary(QString path)
+{
+    char file_data;
+    QByteArray string;
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Could not open bin file for reading";
+        return -1;
+    }
+
+    while(!file.atEnd())
+    {
+      // return value from 'file.read' should always be sizeof(char).
+      file.read(&file_data,sizeof(char));
+      //TODO: 要轉換格式
+      string.append(file_data);
+    }
+    file.close();
+
+    printf("Size if QbyteArray: %i\n", string.length());
+    qDebug() << string[0];
+    qDebug() << string[1];
+    qDebug() << string[2];
+    qDebug() << string[3];
+    return EXIT_OK;
 }
 
 void print_sep()
@@ -248,7 +278,9 @@ int main(int argc, char *argv[])
     const QStringList argumentList = QCoreApplication::arguments();
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
     QString ComPortName;
+    QString FwFileName = "FW.BIN";
     FILE* input_file = 0;
+    
     QTextStream standardOutput(stdout);
     bool userassign = false;
 
@@ -289,14 +321,23 @@ int main(int argc, char *argv[])
      }
 
     /* OPEN LOCAL FIRMWARE BIN FILE */
-#if 0
-    input_file = open_firmware_bin(argv[1]);
+    //printf("Open the Firmware file: ");
+#if 1
+    input_file = open_firmware_bin("FW.BIN");
     if ( !input_file ) {
         printf("Load Firmware Bin File Fails.\n");
         exitCode = EXIT_ERR;
         return exitCode;
     }
 #endif
+
+    exitCode = readBinary(FwFileName);
+    if (exitCode) {
+        printf("Load Firmware Bin File Fails.\n");
+        exitCode = EXIT_ERR;
+        return exitCode;
+    }
+
 
     /* OPEN SIS UART COMM PORT */
     qDebug() << "Open SiS" << ComPortName << "port";
