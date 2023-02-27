@@ -47,6 +47,11 @@ extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned 
 //SIS DEBUG
 #define SIS_ERR                 -1
 
+//SIS UPDATE FW
+#define RAM_SIZE		8*1024
+#define PACK_SIZE		52
+
+
 //SIS CMD DEFINE
 #define CMD_SISFLASH           0x81
 #define CMD_SISRESET           0x82

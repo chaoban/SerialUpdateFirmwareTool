@@ -277,6 +277,7 @@ bool sis_get_bootflag(quint32 *bootflag)
 //static bool sis_get_fw_id(quint16 *fw_version)
 bool sis_get_fw_id(quint16 *fw_version)
 {
+    //TODO
     quint8 tmpbuf[MAX_BYTE] = {0};
     *fw_version = (tmpbuf[22] << 8) | (tmpbuf[23]);
     return EXIT_OK;
@@ -357,12 +358,75 @@ bool sis_flash_rom()
 //static bool sis_clear_bootflag()
 bool sis_clear_bootflag()
 {
+    /* sis_write_fw_info
+     * sis_write_fw_payload
+     * sis_flash_rom
+     */
     return EXIT_OK;
 }
 
 //static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count)
 bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count)
 {
+    int i, ret, block_retry;
+	unsigned int end = addr + count;
+	unsigned int count_83 = 0, size_83 = 0; // count_83: address, size_83: length
+	unsigned int count_84 = 0, size_84 = 0; // count_84: address, size_84: length
+	unsigned int pack_num = 0;
+
+    /*
+     * sis_write_fw_info
+     * sis_write_fw_payload
+     * sis_flash_rom
+    */
+	
+
+    count_83 = addr;
+    while (count_83 < end) {
+        size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
+        //printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
+        pack_num = (size_83 / PACK_SIZE) + (((size_83 % PACK_SIZE) == 0)? 0 : 1);
+        for (block_retry = 0; block_retry < 3; block_retry++) {
+            printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
+            ret = sis_write_fw_info(count_83, pack_num);
+            if (ret) {
+                printf("sis Write FW info (0x83) error.\n");
+                continue;
+            }
+            count_84 = count_83;
+            for (i = 0; i < pack_num; i++) {
+                size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE)? 
+                    PACK_SIZE : (count_83 + size_83 - count_84);
+                //printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
+                ret = sis_write_fw_payload(data + count_84, size_84);
+                if (ret)
+                    break;
+                count_84 += size_84;
+            }
+            if (ret) {
+                printf("sis Write FW payload (0x84) error.\n");
+                continue;
+            }
+            //msleep(1000);
+            ret = sis_flash_rom();
+            if (ret) {
+                printf("sis Flash ROM (0x81) error.\n");
+                continue;
+            } else {
+                printf("sis update block success.\n");
+                break;
+            }	
+        }
+        if (ret < 0) {
+            printf("Retry timeout\n");
+            return -1;
+        }
+        count_83 += size_83;
+        if (count_83 == count_84) {
+            printf("sis count_83 == count_84.\n");
+        }
+    }
+
     return EXIT_OK;
 }
 
@@ -375,6 +439,27 @@ bool sis_reset_cmd()
 //static bool sis_update_fw(quint8 *fn, bool update_boot)
 bool sis_update_fw(quint8 *fn, bool update_boot)
 {
+    /* (1) Clear boot flag */
+    /* sis_clear_bootflag() */
+
+
+    /* (2) Update main code 1 */
+    /* sis_update_block */
+    /* 0x00007000 - 0x00016000 */
+
+    /* (3) Update main code 2 */
+    /* 0x00006000 - 0x00001000 */
+
+    /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc */
+    /* 0x00004000 - 0x00002000 */
+
+    /* if need update_boot */
+    /* (5) Update boot code */
+    /* 0x00000000 - 0x00004000 */
+
+    /* (6) Update rodata */
+    /* 0x0001d000 - 0x00002000 */
+
     return EXIT_OK;
 }
 
@@ -424,7 +509,7 @@ int SISUpdateFlow()
      * Get FW Information and Check FW Info
      * sis_get_fw_info
      */
-    printf("Get FW Information and Check FW Info\n");
+    printf("Get FW Information\n");
 
     ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
 
@@ -432,35 +517,33 @@ int SISUpdateFlow()
         printf("sis get fw info failed %d\n", ret);
     }
 
-    print_sep();
-
-
     /*
      * Check FW Info
      */
     printf("Check FW Info\n");
     print_sep();
 
-
+    /*
+     * Get BootFlag
+     * sis_get_bootflag()
+     */
 
     /*
      * Check BootFlag
-     * sis_get_bootflag
      */
     printf("Check BootFlag\n");
     print_sep();
 
-
-
-
-
+    /*
+     * Get Bootloader ID and Bootloader CRC
+     * sis_get_bootloader_id_crc
+     */
+    
     /*
      * Check Bootloader ID and Bootloader CRC
-     * sis_get_bootloader_id_crc
      */
     printf("Check Bootloader ID and Bootloader CRC\n");
     print_sep();
-
 
 
 
@@ -471,7 +554,14 @@ int SISUpdateFlow()
     printf("START FIRMWARE UPDATE!!!\n");
     print_sep();
 
+    /* Reset */
+    // ret = sis_reset_cmd();
+    printf("Reset SIS Device\n");
+    print_sep();
 
+    /*
+     * Release FW Bin File
+    */
 
     return EXIT_OK;
 }
