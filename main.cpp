@@ -30,7 +30,7 @@ int uartTest(QString *);
 void printVersion();
 void print_sep();
 extern int ScanPort();
-extern int Do_Update();
+extern int SISUpdateFlow();
 QSerialPort serial;
 FILE* open_firmware_bin( const char* filename);
 int occupiedPortCount = 0;
@@ -321,8 +321,8 @@ int main(int argc, char *argv[])
     printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
 
     /* UPDATE FW */
-    //TODO: 傳遞Comm Port & Local Bin file給 Do_Update
-    exitCode = Do_Update();
+    //TODO: 傳遞Comm Port & Local Bin file給 SISUpdateFlow
+    exitCode = SISUpdateFlow();
     if (exitCode) {
         return exitCode;
     }

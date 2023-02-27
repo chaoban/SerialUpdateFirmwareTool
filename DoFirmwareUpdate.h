@@ -19,7 +19,7 @@ enum SIS_817_POWER_MODE {
 };
 
 
-int Do_Update();
+int SISUpdateFlow();
 void sis_fw_softreset();
 bool sis_switch_to_cmd_mode();
 bool sis_switch_to_work_mode();
@@ -47,8 +47,30 @@ extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned 
 //SIS DEBUG
 #define SIS_ERR                 -1
 
-
 //SIS CMD DEFINE
+#define CMD_SISFLASH           0x81
+#define CMD_SISRESET           0x82
+#define CMD_SISUPDATE          0x83
+#define CMD_SISWRITE           0x84
+#define CMD_SISXMODE           0x85
+#define CMD_SISREAD            0x86
+#define CMD_SISBRIDGE          0x01
+
+#define CMD_S_FLASH            0x03
+#define CMD_S_RESET            0x03
+#define CMD_S_UPDATE           0x09
+#define CMD_S_WRITE            0x3B
+#define CMD_S_XMODE            0x05
+#define CMD_S_READ             0X09
+#define CMD_S_BRIDGE           0X05
+
+#define READ_SIZE              52
+
+//FW ADDRESS
+#define ADDR_FW_INFO            0xA0004000
+
+
+
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09
 #define BUF_ACK_MSB             0x0A
@@ -60,11 +82,8 @@ extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned 
 
 #define BUF_PAYLOAD_PLACE       8
 #define INT_OUT_REPORT          0x09
-#define CMD_81_SIZE             8
-#define CMD_82_SIZE             8
-#define CMD_85_SIZE             10
-#define CMD_83_SIZE             14
-#define CMD_86_SIZE             14
+
+
 #define SIS_GENERAL_TIMEOUT     1000
 #define SIS_BOOTFLAG_P810       0x50383130
 
