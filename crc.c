@@ -24,7 +24,7 @@ unsigned short crc16_mmc_upd( unsigned char * buf, unsigned int len, unsigned sh
     return (crc_old);
 }
 
-unsigned short  crc_check(unsigned char* buf,unsigned char len,unsigned char swap  )
+unsigned short crc_check(unsigned char* buf,unsigned char len,unsigned char swap  )
 {
     unsigned char   lenght_cnt = 0;
     unsigned char   i = 0;

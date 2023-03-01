@@ -12,6 +12,7 @@
 #include "DoFirmwareUpdate.h"
 #include "QDebug"
 
+
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 //QByteArray sis_fw_data;
 uint8_t sis_fw_data[] = {
@@ -139,12 +140,18 @@ bool sis_switch_to_cmd_mode()
     uint8_t sis817_cmd_active[5] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x51, 0x09};
     uint8_t sis817_cmd_enable_diagnosis[5] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x21, 0x01};
 
+    sis817_cmd_active[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_active, sizeof(sis817_cmd_active) );
+    sis817_cmd_enable_diagnosis[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_enable_diagnosis, sizeof(sis817_cmd_enable_diagnosis) );
+    //printf("CRC=%x\n", sis817_cmd_active[BIT_CRC]);
+    //printf("CRC=%x\n", sis817_cmd_enable_diagnosis[BIT_CRC]);
+
     //Send 85 CMD - PWR_CMD_ACTIVE
     ret = sis_command_for_write(sizeof(sis817_cmd_active), sis817_cmd_active);
     if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
     }
+
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #if 0
@@ -284,15 +291,6 @@ bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, q
                                                ((ADDR_FW_INFO >> 24) & 0xff),
                                               R_SIZE_LSB, R_SIZE_MSB};
 
-//    sis_cmd_get_FW_INFO[BIT_CRC] = sis_calculate_output_crc( sis_cmd_get_FW_INFO, CMD_86_SIZE );
-
-//CHAOBAN TEST
-#if 0
-    uint8_t sis_cmd[10] = {0x40, 0x01, 0x08, 0x00, 0x09,0x00, 0x85, 0x00, 0x51, 0x09};
-    sis_cmd[7] = sis_calculate_output_crc( sis_cmd, 10 );
-    printf("CRC=%x\n", sis_cmd[7]);
-#endif
-
     // write
     ret = sis_command_for_write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
     if (ret < 0) {
@@ -418,6 +416,15 @@ bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count)
 bool sis_update_fw(quint8 *fn, bool update_boot)
 {
     int ret = 0;
+
+//FOR DEBUG FIRMWARE DATA
+#if 1
+    printf("Enter sis_update_fw()\n");
+    qDebug() << FirmwareString[0];
+    qDebug() << FirmwareString[1];
+    qDebug() << FirmwareString[2];
+    qDebug() << FirmwareString[3];
+#endif
 
     /* (1) Clear boot flag */
     ret = sis_clear_bootflag();
@@ -569,6 +576,7 @@ int SISUpdateFlow()
      * sis_update_fw
      */
     printf("START FIRMWARE UPDATE!!!\n");
+    //ret = sis_update_fw(FirmwareString, update_boot);
     ret = sis_update_fw(sis_fw_data, update_boot);
 	if (ret) {
 		printf("sis update fw failed %d\n", ret);

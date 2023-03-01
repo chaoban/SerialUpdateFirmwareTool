@@ -42,7 +42,8 @@ int sis_command_for_read(int , unsigned char *);
 
 extern QSerialPort serial;
 extern void print_sep();
-extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned char swap);
+//extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned char swap);
+extern QByteArray FirmwareString;
 
 //SIS DEBUG
 #define SIS_ERR                 -1
@@ -100,9 +101,12 @@ extern unsigned short crc_check(unsigned char *buf, unsigned char len, unsigned 
 #define BIT_OP_MSB              2
 #define BIT_SIZE_LSB            3
 #define BIT_SIZE_MSB            4
-#define BIT_SISID               5
-#define BIT_CRC                 6
-#define BIT_CMD                 7
+
+//SIS OP CODE
+#define BIT_SISID               0
+#define BIT_CRC                 1
+#define BIT_CMD                 2
+#define BIT_PALD                3
 
 
 #define GR_OP                   0x80

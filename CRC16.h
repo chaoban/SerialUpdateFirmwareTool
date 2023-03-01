@@ -3,6 +3,11 @@
 
 #include<QDebug>
 
+#define u8 quint8
+#define u16 quint16
+
+quint8 sis_calculate_output_crc( u8* buf, int len );
+
 /**
  * crc_itu_t - Compute the CRC-ITU-T for the data buffer
  *

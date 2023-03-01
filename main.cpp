@@ -34,6 +34,7 @@ extern int SISUpdateFlow();
 QSerialPort serial;
 FILE* open_firmware_bin( const char* filename);
 int readBinary(QString);
+QByteArray FirmwareString;
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
@@ -241,7 +242,6 @@ FILE* open_firmware_bin( const char* filename)
 int readBinary(QString path)
 {
     char file_data;
-    QByteArray string;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -254,15 +254,12 @@ int readBinary(QString path)
       // return value from 'file.read' should always be sizeof(char).
       file.read(&file_data,sizeof(char));
       //TODO: 要轉換格式
-      string.append(file_data);
+      FirmwareString.append(file_data);
     }
     file.close();
 
-    printf("Size if QbyteArray: %i\n", string.length());
-    qDebug() << string[0];
-    qDebug() << string[1];
-    qDebug() << string[2];
-    qDebug() << string[3];
+    printf("Firmware data being read are %i bytes\n", FirmwareString.length());
+    
     return EXIT_OK;
 }
 
@@ -322,7 +319,7 @@ int main(int argc, char *argv[])
 
     /* OPEN LOCAL FIRMWARE BIN FILE */
     //printf("Open the Firmware file: ");
-#if 1
+#if 0
     input_file = open_firmware_bin("FW.BIN");
     if ( !input_file ) {
         printf("Load Firmware Bin File Fails.\n");
