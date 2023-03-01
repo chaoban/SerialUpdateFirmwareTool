@@ -137,9 +137,17 @@ bool sis_switch_to_cmd_mode()
     uint8_t tmpbuf[MAX_BYTE] = {0};
 //chaoban test
 //    uint8_t sis817_cmd_active[12] = {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44};
-    uint8_t sis817_cmd_active[5] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x51, 0x09};
-    uint8_t sis817_cmd_enable_diagnosis[5] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x21, 0x01};
+    uint8_t sis817_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x51, 0x09};
+    uint8_t sis817_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x21, 0x01};
 
+
+/* 計算CRC並填入適當欄位內
+ * 使用 sis_calculate_output_crc( u8* buf, int len )
+ * buf: 要計算的command封包
+ * len: command封包的長度
+ * 以Change mode為例:
+ * [0x09, CRC, 0x85, 0x51, 0x09]
+ */
     sis817_cmd_active[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_active, sizeof(sis817_cmd_active) );
     sis817_cmd_enable_diagnosis[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_enable_diagnosis, sizeof(sis817_cmd_enable_diagnosis) );
     //printf("CRC=%x\n", sis817_cmd_active[BIT_CRC]);
@@ -257,7 +265,26 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
 //static bool sis_get_bootflag(quint32 *bootflag)
 bool sis_get_bootflag(quint32 *bootflag)
 {
-    quint8 tmpbuf[MAX_BYTE] = {0};
+    int ret = 0;
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+    uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID,0x00/*CRC*/,
+            CMD_SISREAD, 0xf0, 0xef, 0x01, 0xa0, 0x34, 0x00};
+        sis_cmd_get_bootflag[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_bootflag,
+                                                                 sizeof(sis_cmd_get_bootflag) );
+    // write
+    ret = sis_command_for_write(sizeof(sis_cmd_get_bootflag), sis_cmd_get_bootflag);
+    if (ret < 0) {
+        printf("sis SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
+        return -1;
+    }
+
+    // read
+    //TODO: Chaoban test: What is the reaf buf format ??
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+
+    //pr_err("sis_get_bootflag read data:\n");
+    //PrintBuffer(0, MAX_BYTE, tmpbuf);
+
     *bootflag = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
     return EXIT_OK;
 }
@@ -284,12 +311,15 @@ bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, q
 
     uint64_t addr = ADDR_FW_INFO;//A0004000
 
-    uint8_t sis_cmd_get_FW_INFO[CMD_S_READ] = {SIS_REPORTID, 0x00,/*CRC*/CMD_SISREAD,
+    uint8_t sis_cmd_get_FW_INFO[CMD_SZ_READ] = {SIS_REPORTID, 0x00,/*CRC*/CMD_SISREAD,
                                                (ADDR_FW_INFO & 0xff),
                                                ((ADDR_FW_INFO >> 8) & 0xff),
                                                ((ADDR_FW_INFO >> 16) & 0xff),
                                                ((ADDR_FW_INFO >> 24) & 0xff),
                                               R_SIZE_LSB, R_SIZE_MSB};
+    //計算及填入CRC
+    sis_cmd_get_FW_INFO[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_FW_INFO,
+                                                            sizeof(sis_cmd_get_FW_INFO));
 
     // write
     ret = sis_command_for_write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
@@ -547,17 +577,74 @@ int SISUpdateFlow()
      * Check FW Info
      */
     printf("Check FW Info\n");
+//TODO
+//CHAOBAN TEST
+#if 0
+    //chip id
+    bin_chip_id = sis_fw_data[0x4002];
+    printf("sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
+
+    //tp vendor id
+    bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
+    printf("sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
+
+    //task id
+    bin_task_id = (sis_fw_data[0x400a] << 8) | (sis_fw_data[0x400b]);
+    printf("sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
+
+    //0x400c reserved
+
+    //chip type
+    bin_chip_type = sis_fw_data[0x400d];
+    printf("sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
+
+    //fw version
+    bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
+    printf("sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
+
+    //check fw info
+    if ( (chip_id != bin_chip_id) || (tp_size != bin_tp_size) || (tp_vendor_id != bin_tp_vendor_id) || (task_id != bin_task_id) || (chip_type != bin_chip_type) ) {
+        printf("fw info not match, stop update fw.");
+        return EXIT_FAIL;
+    }
+
+    msleep(2000);
+#endif
+
     print_sep();
 
     /*
      * Get BootFlag
      * sis_get_bootflag()
      */
+    ret = sis_get_bootflag(&bootflag);
+    if (ret) {
+        printf("sis get bootflag failed %d\n", ret);
+    }
 
     /*
      * Check BootFlag
      */
     printf("Check BootFlag\n");
+//TODO
+//CHAOBAN TEST
+#if 0
+    bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
+    printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
+
+    if (bin_bootflag != SIS_BOOTFLAG_P810) {
+        printf("bin file broken, stop update fw.\n");
+        return EXIT_FAIL;
+    }
+
+    if (bootflag != SIS_BOOTFLAG_P810) {
+        printf("fw broken, force update fw.\n");
+        force_update = true;
+    }
+
+    msleep(2000);
+#endif
+
     print_sep();
 
     /*
@@ -569,6 +656,14 @@ int SISUpdateFlow()
      * Check Bootloader ID and Bootloader CRC
      */
     printf("Check Bootloader ID and Bootloader CRC\n");
+//TODO
+//CHAOBAN TEST
+#if 0
+    ret = sis_get_bootloader_id_crc(&bootloader_version, &bootloader_crc_version);
+    if (ret) {
+        printf("sis get bootloader id or crc failed %d\n", ret);
+    }
+#endif
     print_sep();
 
     /*

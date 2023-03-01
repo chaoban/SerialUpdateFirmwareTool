@@ -62,13 +62,13 @@ extern QByteArray FirmwareString;
 #define CMD_SISREAD            0x86
 #define CMD_SISBRIDGE          0x01
 
-#define CMD_S_FLASH            0x03
-#define CMD_S_RESET            0x03
-#define CMD_S_UPDATE           0x09
-#define CMD_S_WRITE            0x3B
-#define CMD_S_XMODE            0x05
-#define CMD_S_READ             0X09
-#define CMD_S_BRIDGE           0X05
+#define CMD_SZ_FLASH            0x03
+#define CMD_SZ_RESET            0x03
+#define CMD_SZ_UPDATE           0x09
+#define CMD_SZ_WRITE            0x3B
+#define CMD_SZ_XMODE            0x05
+#define CMD_SZ_READ             0X09
+#define CMD_SZ_BRIDGE           0X05
 
 #define READ_SIZE              52
 
