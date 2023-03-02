@@ -32,28 +32,15 @@ void write_crc(unsigned char *buf, int start, int end)
     buf[end+2] = crc & 0xff;
 }
 
-#if 0
+
 quint8 sis_calculate_output_crc( u8* buf, int len )
 {
     u16 crc;
     u8 *cmd, *payload;
     cmd = (buf + BIT_CMD);
-        payload = (buf + BUF_PAYLOAD_PLACE);
-        crc = crc_itu_t(0x0000, cmd, 1);
-        crc = crc_itu_t(crc, payload, len - BUF_PAYLOAD_PLACE);
-    crc = crc & 0xff;
-        return crc;
-}
-#else
-quint8 sis_calculate_output_crc( u8* buf, int len )
-{
-    u16 crc;
-    u8 *cmd, *payload;
-    cmd = buf + BIT_CMD;
         payload = (buf + BIT_PALD);
         crc = crc_itu_t(0x0000, cmd, 1);
         crc = crc_itu_t(crc, payload, len - BIT_PALD);
         crc = crc & 0xff;
         return crc;
 }
-#endif

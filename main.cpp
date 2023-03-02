@@ -283,7 +283,9 @@ int main(int argc, char *argv[])
 
     //TODO: PARSE COMMAND FORMAT
 
-    /* Get the Comm Port of SiS Device */
+    /*
+     * Get the Comm Port of SiS Device
+     */
 
     //printf("\nSerial Port test:");
     if (!userassign) {
@@ -293,7 +295,9 @@ int main(int argc, char *argv[])
         }
      }
 
-    /* OPEN LOCAL FIRMWARE BIN FILE */
+    /*
+     * OPEN LOCAL FIRMWARE BIN FILE
+     */
     //printf("Open the Firmware file: ");
     exitCode = readBinary(FwFileName);
     if (exitCode) {
@@ -303,7 +307,9 @@ int main(int argc, char *argv[])
     }
 
 
-    /* OPEN SIS UART COMM PORT */
+    /*
+     * OPEN SIS UART COMM PORT
+     */
     qDebug() << "Open SiS" << ComPortName << "port";
     serial.setPortName(ComPortName);
 
@@ -326,7 +332,6 @@ int main(int argc, char *argv[])
     printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
 
     /* UPDATE FW */
-    //TODO: 傳遞Comm Port & Local Bin file給 SISUpdateFlow
     exitCode = SISUpdateFlow();
     if (exitCode) {
         return exitCode;

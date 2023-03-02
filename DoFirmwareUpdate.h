@@ -18,6 +18,7 @@ enum SIS_817_POWER_MODE {
     POWER_MODE_SLEEP  = 0x52
 };
 
+enum SIS_817_POWER_MODE sis_get_fw_mode();
 
 int SISUpdateFlow();
 void sis_fw_softreset();
@@ -28,18 +29,16 @@ bool sis_flash_rom();
 bool sis_clear_bootflag();
 bool sis_reset_cmd();
 bool sis_change_fw_mode(enum SIS_817_POWER_MODE);
-bool sis_get_bootflag(quint32 *);
-bool sis_get_fw_id(quint16 *);
-bool sis_get_fw_info(quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
-bool sis_write_fw_info(unsigned int, int);
-bool sis_write_fw_payload(const quint8 *, unsigned int);
-bool sis_update_block(quint8 *, unsigned int, unsigned int);
-bool sis_update_fw(quint8 *, bool);
-enum SIS_817_POWER_MODE sis_get_fw_mode();
+static bool sis_get_bootflag(quint32 *);
+static bool sis_get_fw_id(quint16 *);
+static bool sis_get_fw_info(quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
+static bool sis_write_fw_info(unsigned int, int);
+static bool sis_write_fw_payload(const quint8 *, unsigned int);
+static bool sis_update_block(quint8 *, unsigned int, unsigned int);
+static bool sis_update_fw(quint8 *, bool);
 static bool sis_get_bootloader_id_crc(quint32 *, quint32 *);
-
-int sis_command_for_write(int , unsigned char *);
-int sis_command_for_read(int , unsigned char *);
+static int sis_command_for_write(int , unsigned char *);
+static int sis_command_for_read(int , unsigned char *);
 
 extern QSerialPort serial;
 extern void print_sep();
