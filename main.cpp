@@ -26,13 +26,14 @@
 
 #define TIMEOUT_TIME 3000//3000
 
+unsigned char * fn;
+
 int uartTest(QString *);
 void printVersion();
 void print_sep();
 extern int ScanPort();
 extern int SISUpdateFlow();
 QSerialPort serial;
-FILE* open_firmware_bin( const char* filename);
 int readBinary(QString);
 QByteArray FirmwareString;
 int occupiedPortCount = 0;
@@ -212,33 +213,6 @@ int testserialport(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
-
-FILE* open_firmware_bin( const char* filename)
-{
-    FILE* input_file = 0;
-    errno_t err;
-
-    err = fopen_s( &input_file, filename, "r" );
-
-    if ( err == 0 ) {
-        printf( "Open firmware %s Success.\n", filename );
-    }
-    else {
-        printf( "ERROR, Can not open firmware %s.\n", filename );
-        return 0;
-    }
-
-    fseek( input_file, 0, SEEK_END );
-
-    int file_size = ftell( input_file );
-
-    printf( "Pattern file contains %i bytes\n", file_size );
-
-    fseek( input_file, 0, SEEK_SET );
-
-    return input_file;
-}
-
 int readBinary(QString path)
 {
     char file_data;
@@ -259,6 +233,8 @@ int readBinary(QString path)
     file.close();
 
     printf("Firmware data being read are %i bytes\n", FirmwareString.length());
+
+    fn = (unsigned char *)FirmwareString.data();
     
     return EXIT_OK;
 }
@@ -276,7 +252,7 @@ int main(int argc, char *argv[])
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
     QString ComPortName;
     QString FwFileName = "FW.BIN";
-    FILE* input_file = 0;
+    //FILE* input_file = 0;
     
     QTextStream standardOutput(stdout);
     bool userassign = false;
@@ -319,15 +295,6 @@ int main(int argc, char *argv[])
 
     /* OPEN LOCAL FIRMWARE BIN FILE */
     //printf("Open the Firmware file: ");
-#if 0
-    input_file = open_firmware_bin("FW.BIN");
-    if ( !input_file ) {
-        printf("Load Firmware Bin File Fails.\n");
-        exitCode = EXIT_ERR;
-        return exitCode;
-    }
-#endif
-
     exitCode = readBinary(FwFileName);
     if (exitCode) {
         printf("Load Firmware Bin File Fails.\n");
@@ -368,10 +335,6 @@ int main(int argc, char *argv[])
     /* GET FW ID */
 
     printf("\nExit code : %d\n", exitCode);
-
-    if (input_file) {
-        fclose(input_file);
-    }
 
     if (serial.isOpen()) {
         serial.close();

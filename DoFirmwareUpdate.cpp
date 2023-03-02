@@ -12,12 +12,16 @@
 #include "DoFirmwareUpdate.h"
 #include "QDebug"
 
-
+bool update_fw_initprobe = false;
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 //QByteArray sis_fw_data;
+
+
 uint8_t sis_fw_data[] = {
 //TODO: BINARY FILE
 };
+
+extern unsigned char * fn;
 
 //#define CHAOBAN_TEST    1
 
@@ -103,7 +107,7 @@ int sis_command_for_read(int rlength, unsigned char *rdata)
 
     if(!serial.waitForReadyRead(-1)) { //block until new data arrives
         qDebug() << "error: " << serial.errorString();
-        ret = SIS_ERR;
+        ret = SIS_ERR;//-1
     }
     else {
         qDebug() << "New data available: " << serial.bytesAvailable();
@@ -448,12 +452,16 @@ bool sis_update_fw(quint8 *fn, bool update_boot)
     int ret = 0;
 
 //FOR DEBUG FIRMWARE DATA
-#if 1
+#if 0
     printf("Enter sis_update_fw()\n");
     qDebug() << FirmwareString[0];
     qDebug() << FirmwareString[1];
     qDebug() << FirmwareString[2];
     qDebug() << FirmwareString[3];
+    qDebug() << fn[0];
+    qDebug() << fn[1];
+    qDebug() << fn[2];
+    qDebug() << fn[3];
 #endif
 
     /* (1) Clear boot flag */
@@ -518,6 +526,34 @@ bool sis_update_fw(quint8 *fn, bool update_boot)
     return EXIT_OK;
 }
 
+static bool sis_get_bootloader_id_crc(quint32 *bootloader_version, quint32 *bootloader_crc)
+{
+    int ret = 0;
+    //int i=0;
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+    uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID,
+        0x00, CMD_SISREAD, 0x30, 0x02, 0x00, 0xa0, 0x34, 0x00};
+    sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
+
+
+// write
+    ret = sis_command_for_write(sizeof(sis_cmd_get_bootloader_id_crc), sis_cmd_get_bootloader_id_crc);
+    if (ret < 0) {
+        printf("sis SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
+        return false;
+    }
+
+    // read
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+
+    //pr_err("sis_get_bootloader_id_crc read data:\n");
+    //PrintBuffer(0, MAX_BYTE, tmpbuf);
+
+    *bootloader_version = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
+    *bootloader_crc = (tmpbuf[12] << 24) | (tmpbuf[13] << 16) | (tmpbuf[14] << 8) | (tmpbuf[15]);
+    return true;
+}
+
 int SISUpdateFlow()
 {
     quint8 chip_id = 0x00;
@@ -549,37 +585,40 @@ int SISUpdateFlow()
     /*
      * Switch FW Mode
      */
-    printf("Switch FW Mode\n");
-
 #if 1
+    printf("Switch FW Mode\n");
     if (!sis_switch_to_cmd_mode()) {
         qDebug() << "Error: sis_switch_to_cmd_mode Fails";
         return EXIT_ERR;
     }
+#else
+    printf("Temporarily canceled Switch FW Mode\n");
 #endif
-
     print_sep();
-
 
     /*
      * Get FW Information and Check FW Info
      * sis_get_fw_info
      */
+#if 0
     printf("Get FW Information\n");
-
     ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
-
     if (ret) {
         printf("sis get fw info failed %d\n", ret);
     }
+#else
+    printf("Temporarily canceled Get FW Information\n");
+#endif
+    print_sep();
 
     /*
      * Check FW Info
      */
-    printf("Check FW Info\n");
+
 //TODO
 //CHAOBAN TEST
 #if 0
+    printf("Check FW Info\n");
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
     printf("sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
@@ -609,26 +648,32 @@ int SISUpdateFlow()
     }
 
     msleep(2000);
+#else
+    printf("Temporarily canceled Check FW Info\n");
 #endif
-
     print_sep();
 
     /*
      * Get BootFlag
      * sis_get_bootflag()
      */
+#if 0
     ret = sis_get_bootflag(&bootflag);
     if (ret) {
         printf("sis get bootflag failed %d\n", ret);
     }
+#else
+    printf("Temporarily canceled get bootflag\n");
+#endif
+    print_sep();
 
     /*
      * Check BootFlag
      */
+#if 0
     printf("Check BootFlag\n");
 //TODO
 //CHAOBAN TEST
-#if 0
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
     printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
 
@@ -643,26 +688,55 @@ int SISUpdateFlow()
     }
 
     msleep(2000);
+#else
+    printf("Temporarily canceled Check BootFlag\n");
 #endif
-
     print_sep();
 
     /*
      * Get Bootloader ID and Bootloader CRC
      * sis_get_bootloader_id_crc
      */
-    
-    /*
-     * Check Bootloader ID and Bootloader CRC
-     */
-    printf("Check Bootloader ID and Bootloader CRC\n");
-//TODO
-//CHAOBAN TEST
+    //TODO
+    //CHAOBAN TEST
 #if 0
+    printf("Get Bootloader ID and Bootloader CRC\n");
     ret = sis_get_bootloader_id_crc(&bootloader_version, &bootloader_crc_version);
     if (ret) {
         printf("sis get bootloader id or crc failed %d\n", ret);
     }
+#else
+    printf("Temporarily canceled Get Bootloader ID and Bootloader CRC\n");
+#endif
+    print_sep();
+
+    /*
+     * Check Bootloader ID and Bootloader CRC
+     */
+#if 0
+    printf("Check Bootloader ID and Bootloader CRC\n");
+
+    //bootloader id
+    bin_bootloader_version = (sis_fw_data[0x230] << 24) | (sis_fw_data[0x231] << 16) | (sis_fw_data[0x232] << 8) | (sis_fw_data[0x233]);
+    printf("sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
+
+    //bootloader crc
+    bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
+    printf("sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
+
+    if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
+        update_boot = true;
+        printf("bootloader changed. update_boot flag on.\n");
+    }
+
+    //bin_fw_version = 0xab00; //test for update fw
+    //update_boot = true; //test for update bootloader
+
+    if ((bin_fw_version & 0xff00) == 0xab00) {
+        force_update = true;
+    }
+#else
+    printf("Temporarily canceled Check Bootloader ID and Bootloader CRC\n");
 #endif
     print_sep();
 
@@ -670,29 +744,65 @@ int SISUpdateFlow()
      * Update FW
      * sis_update_fw
      */
+#if 0
     printf("START FIRMWARE UPDATE!!!\n");
-    //ret = sis_update_fw(FirmwareString, update_boot);
-    ret = sis_update_fw(sis_fw_data, update_boot);
-	if (ret) {
-		printf("sis update fw failed %d\n", ret);
-		return ret;
-	}
+    if (update_fw_initprobe == false) {
+        update_fw_initprobe = true;
+        if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
+            || force_update == true)
+        {
+            //Special Update Flag : 0x9999: update by Driver
+            sis_fw_data[0x4000] = 0x99;
+            sis_fw_data[0x4001] = 0x99;
 
+            //ret = sis_update_fw(FirmwareString, update_boot);
+            ret = sis_update_fw(sis_fw_data, update_boot);
+            printf("update_fw_initprobe %d\n", update_fw_initprobe);
+
+            if (ret) {
+                printf("sis update fw failed %d\n", ret);
+                return ret;
+            }
+            //firmware_id = bin_fw_version;
+        }
+        else if (bin_fw_version > 0xabff) {
+            printf("Unavilable Firmware version.\n");
+            //goto work_mode;//TODO: CHAOBAN TEST
+        }
+        else {
+            printf("Current Firmware version is same or later than bin.\n");
+            //goto work_mode;//TODO: CHAOBAN TEST
+        }
+    }
+    else
+    {
+        printf("sis driver update FW :"
+            " After AP Update .\n");
+        //goto work_mode;//TODO: CHAOBAN TEST
+    }
+#else
+    //ret = sis_update_fw(sis_fw_data, update_boot);
+    ret = sis_update_fw(fn, update_boot);
+
+    if (ret) {
+        printf("sis update fw failed %d\n", ret);
+        return ret;
+    }
+#endif
     print_sep();
 
     /* Reset */
-    ret = sis_reset_cmd();
+#if 0
     printf("Reset SIS Device\n");
+    ret = sis_reset_cmd();
     if (ret) {
 		printf("sis RESET failed %d\n", ret);
 		return ret;
 	}
-
+#else
+    printf("Temporarily canceled Reset SIS Device\n");
+#endif
     print_sep();
-
-    /*
-     * Release FW Bin File
-    */
 
     return EXIT_OK;
 }

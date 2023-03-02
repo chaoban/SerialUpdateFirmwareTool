@@ -36,6 +36,7 @@ bool sis_write_fw_payload(const quint8 *, unsigned int);
 bool sis_update_block(quint8 *, unsigned int, unsigned int);
 bool sis_update_fw(quint8 *, bool);
 enum SIS_817_POWER_MODE sis_get_fw_mode();
+static bool sis_get_bootloader_id_crc(quint32 *, quint32 *);
 
 int sis_command_for_write(int , unsigned char *);
 int sis_command_for_read(int , unsigned char *);
@@ -62,13 +63,13 @@ extern QByteArray FirmwareString;
 #define CMD_SISREAD            0x86
 #define CMD_SISBRIDGE          0x01
 
-#define CMD_SZ_FLASH            0x03
-#define CMD_SZ_RESET            0x03
-#define CMD_SZ_UPDATE           0x09
-#define CMD_SZ_WRITE            0x3B
-#define CMD_SZ_XMODE            0x05
-#define CMD_SZ_READ             0X09
-#define CMD_SZ_BRIDGE           0X05
+#define CMD_SZ_FLASH           0x03 /* Cmd 0x81's Size */
+#define CMD_SZ_RESET           0x03 /* Cmd 0x82's Size */
+#define CMD_SZ_UPDATE          0x09 /* Cmd 0x83's Size */
+#define CMD_SZ_WRITE           0x3B /* Cmd 0x84's Size */
+#define CMD_SZ_XMODE           0x05 /* Cmd 0x85's Size */
+#define CMD_SZ_READ            0X09 /* Cmd 0x86's Size */
+#define CMD_SZ_BRIDGE          0X05 /* Cmd 0x01's Size */
 
 #define READ_SIZE              52
 
