@@ -8,20 +8,29 @@
 ** 5.	Update FW
 **
 **********************************************/
-
-#include "QDebug"
+#include <QSerialPort>
+#include <QDebug>
 #include "DoFirmwareUpdate.h"
-
-
-extern void sis_make_83_buffer( quint8 *, unsigned int, int );
-extern quint8 sis_calculate_output_crc( quint8* buf, int len );
-extern void msleep(unsigned int);//msec
-extern unsigned char * fn;
-bool update_fw_initprobe = false;
-
-uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
+#include "sis_command.h"
+#include "delay.h"
 
 //#define CHAOBAN_TEST    1
+
+/*
+ * 函式宣告
+ */
+extern quint8 sis_calculate_output_crc( quint8* buf, int len );
+extern void print_sep();
+
+
+/*
+ * 全域變數
+ */
+uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
+extern unsigned char * fn; /* 讀取韌體檔案用 */
+extern QSerialPort serial;
+extern QByteArray FirmwareString;
+//bool update_fw_initprobe = false;
 
 /*
  * I2C Read Write Commands
@@ -337,6 +346,14 @@ bool sis_reset_cmd()
     return EXIT_OK;
 }
 
+//TODO: CHAOBAN TEST: This function should be rename.
+/*
+ * 指定燒錄的ROM Address和長度
+ * 使用83 command
+ * ROM Address為4K Alignment
+ * 長度為要使用84 command傳送幾次 Packages number
+ * 一個84 command的Payload用每筆52b去切割為多個Packages
+ */
 static bool sis_write_fw_info(unsigned int addr, int pack_num)
 {
     int ret = 0;
@@ -372,9 +389,51 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
     return EXIT_OK;
 }
 
-
+/*
+ * 84 COMMAND: 傳送Firmware Data
+ */
 static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 {
+#if 1
+    int ret = 0;
+    int len = BUF_PAYLOAD_PLACE + count;
+    quint8 tmpbuf[MAX_BYTE] = {0};
+    quint8 *sis817_cmd_84 = malloc(len * sizeof(int));
+
+
+    if (!sis817_cmd_84) {
+        printf("sis alloc buffer error\n");
+        return -1;
+    }
+    sis_make_84_buffer(sis817_cmd_84, val, count);
+    //pr_err("sis_command_for_write\n");
+    //PrintBuffer(0, 64, sis817_cmd_84);
+    // write
+    ret = sis_command_for_write(len, sis817_cmd_84);
+    if (ret < 0) {
+        printf("sis SEND write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
+        return -1;
+    }
+    // read
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    if (ret < 0) {
+        printf("sis READ write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
+        return -1;
+    }
+    //pr_err("sis_command_for_read\n");
+    //PrintBuffer(0, 10, tmpbuf);
+    // Check ACK
+    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
+        printf("sis READ write CMD Return NACK - 84(WRI_FW_DATA_PAYL)\n");
+        return false;
+    }
+    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
+        printf("sis READ write CMD Return Unknown- 84(WRI_FW_DATA_PAYL)\n");
+        return false;
+    }
+
+    free(sis817_cmd_84);
+#endif
     return EXIT_OK;
 }
 
@@ -403,17 +462,18 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
 	unsigned int count_84 = 0, size_84 = 0; // count_84: address, size_84: length
 	unsigned int pack_num = 0;
     /*
-     * sis_write_fw_info
-     * sis_write_fw_payload
+     * sis_write_fw_info: Use 83 COMMAND
+     * sis_write_fw_payload: Use 84 COMMAND
      * sis_flash_rom
     */
     count_83 = addr;
     while (count_83 < end) {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
         //printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
-        pack_num = (size_83 / PACK_SIZE) + (((size_83 % PACK_SIZE) == 0)? 0 : 1);
+        pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);//chaoban test
         for (block_retry = 0; block_retry < 3; block_retry++) {
             printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
+
             ret = sis_write_fw_info(count_83, pack_num);
             if (ret) {
                 printf("sis Write FW info (0x83) error.\n");
@@ -459,7 +519,7 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
 }
 
 
-static bool sis_update_fw(quint8 *fn, bool update_boot)
+static bool sis_update_fw(quint8 *fn, bool update_bootloader)
 {
     int ret = 0;
 
@@ -476,61 +536,85 @@ static bool sis_update_fw(quint8 *fn, bool update_boot)
     qDebug() << fn[3];
 #endif
 
-    /* (1) Clear boot flag */
+    /* (1) Clear boot flag
+     *     ADDRESS: 0x1e000, Length=0x1000
+     *     Clear boot-flag to "0"
+     */
     ret = sis_clear_bootflag();
     if (ret) {
-        printf("sis Update fw fail at (1).");
+        printf("sis Update fw fail at Clear boot flag.");
 	    //TODO:
         //goto release_firmware;
     }
 
 
-    /* (2) Update main code 1 */
-    /* sis_update_block */
-    /* 0x00007000 - 0x00016000 */
-    ret = sis_update_block(fn, 0x00007000, 0x00016000);
+    /* (2) Update main code 1
+     *     ADDRESS: 0x4000, Length=0x1A000
+     */
+    ret = sis_update_block(fn, 0x00004000, 0x0001A000);
     if (ret) {
-	    printf("sis Update fw fail at (2).");
+        printf("sis Update fw fail at main code 1.");
 	    //TODO:
         //goto release_firmware;
     }
 
-    /* (3) Update main code 2 */
-    /* 0x00006000 - 0x00001000 */
+    /* (3) Update main code 2
+     *     ADDRESS: 0x6000, Length=0x1000
+     */
+#if 0
     ret = sis_update_block(fn, 0x00006000, 0x00001000);
     if (ret) {
-	    printf("sis Update fw fail at (3).");
+        printf("sis Update fw fail at main code 2.");
 	    //TODO:
         //goto release_firmware;
     }
+#endif
 
-    /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc */
-    /* 0x00004000 - 0x00002000 */
+    /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc
+     *     ADDRESS: 0x4000, Length=0x2000
+     */
+#if 0
     ret = sis_update_block(fn, 0x00004000, 0x00002000);
     if (ret) {
-        printf("sis Update fw fail at (4).");
+        printf("sis Update fw fail at fwinfo.");
 	    //TODO:
         //goto release_firmware;
     }
+#endif
 
-    /* if need update_boot */
-    /* (5) Update boot code */
-    /* 0x00000000 - 0x00004000 */
-    if (update_boot) {
+    /* (5) Update boot code (if need update_boot)
+     *     ADDRESS: 0x0, Length=0x4000
+     *     (Notes: if need update_boot)
+     */
+    if (update_bootloader) {
 	    ret = sis_update_block(fn, 0x00000000, 0x00004000);
 	    if (ret) {
-		    printf("sis Update fw fail at (5).");
+            printf("sis Update fw fail at boot code.");
 		    //TODO:
             //goto release_firmware;
 	    }
     }
 
-    /* (6) Update rodata */
-    /* 0x0001d000 - 0x00002000 */
+    /* (6) Update rodata
+     *     ADDRESS: 0x1d000, Length=0x2000
+     */
+#if 0
     ret = sis_update_block(fn, 0x0001d000, 0x00002000);
     if (ret) {
-        printf("sis Update fw fail at (6).");
+        printf("sis Update fw fail at rodata.");
 	    //TODO:
+        //goto release_firmware;
+    }
+#endif
+
+    /* (7) Burn Boot Flag
+     *     ADDRESS: 0x1e000, Length=0x1000
+     */
+    //TODO: CHABAN TEST
+    ret = sis_update_block(fn, 0x0001e000, 0x00001000);
+    if (ret) {
+        printf("sis Update fw fail at Burn Boot Flag.");
+        //TODO:
         //goto release_firmware;
     }
 

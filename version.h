@@ -8,6 +8,8 @@
 #define LAST_VERSION 0
 //#define DESC "HIDRAW"
 
+void printVersion();
+
 void printVersion()
 {
 #ifndef DESC

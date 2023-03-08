@@ -1,6 +1,8 @@
 ﻿#include"sis_command.h"
-#include"DoFirmwareUpdate.h"
 
+
+void sis_make_83_buffer( quint8 *, unsigned int, int );
+void sis_make_84_buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 
 void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num )
@@ -8,7 +10,7 @@ void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num )
     int len = CMD_SZ_UPDATE;
 
     *buf = SIS_REPORTID;
-    *(buf + BIT_CRC) = 0x0;/* CRC*/
+    //*(buf + BIT_CRC) = 0x0;/* CRC*/
     *(buf + BIT_CMD) = CMD_SISUPDATE;
     *(buf + 3) = addr & 0xff;
     *(buf + 4) = (addr >> 8) & 0xff;
@@ -28,8 +30,7 @@ void sis_make_84_buffer( quint8 *buf, const quint8 *val, int count )
     int len = BIT_PALD + count;
 
     *buf = SIS_REPORTID;
-    *(buf + BIT_CRC) = 0x0;/* CRC*/
-
+    //*(buf + BIT_CRC) = 0x0;/* CRC*/
     *(buf + BIT_CMD) = CMD_SISWRITE;
 
     for (i = 0; i < count; i+=4) {

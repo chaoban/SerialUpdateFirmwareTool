@@ -9,6 +9,7 @@
 #include <QSerialPort>
 #include <QDebug>
 #include <QFile>
+#include "DoFirmwareUpdate.h"
 #include "version.h"
 #include "ExitStatus.h"
 
@@ -24,18 +25,22 @@
 #define SIS_VERIFY_LENGTH 12
 #endif
 
-#define TIMEOUT_TIME 3000//3000
+#define TIMEOUT_TIME 3000
 
-unsigned char * fn;
-
+/*
+ * 函式宣告
+ */
 int uartTest(QString *);
-void printVersion();
+int readBinary(QString);
 void print_sep();
 extern int ScanPort();
-extern int SISUpdateFlow();
-QSerialPort serial;
-int readBinary(QString);
+
+/*
+ * 全域變數
+ */
+unsigned char * fn; /* 讀取韌體檔案用 */
 QByteArray FirmwareString;
+QSerialPort serial; /* 開啟Serial Port用 */
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
