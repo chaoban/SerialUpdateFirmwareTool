@@ -158,7 +158,7 @@ bool sis_switch_to_cmd_mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#if 0
+#if 1
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
@@ -187,7 +187,7 @@ bool sis_switch_to_cmd_mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#if 0
+#if 1
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
@@ -275,7 +275,7 @@ static bool sis_get_bootflag(quint32 *bootflag)
     }
 
     // read
-    //TODO: Chaoban test: What is the reaf buf format ??
+    //TODO: Chaoban test: What is the read buf format ??
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
 
     //pr_err("sis_get_bootflag read data:\n");
@@ -391,14 +391,16 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
 
 /*
  * 84 COMMAND: 傳送Firmware Data
+ * val: Firmware BIN File內要開始寫入的ADDRESS
+ * count: 4Bytes ~ 52Bytes不等
  */
 static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 {
-#if 1
     int ret = 0;
-    int len = BUF_PAYLOAD_PLACE + count;
-    quint8 tmpbuf[MAX_BYTE] = {0};
-    quint8 *sis817_cmd_84 = malloc(len * sizeof(int));
+    //int len = BUF_PAYLOAD_PLACE + count;
+    quint8 len = BIT_PALD + count;
+    quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
+    quint8 *sis817_cmd_84 = (quint8 *)malloc(sizeof(len));
 
 
     if (!sis817_cmd_84) {
@@ -433,7 +435,6 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
     }
 
     free(sis817_cmd_84);
-#endif
     return EXIT_OK;
 }
 
@@ -460,7 +461,7 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
 	unsigned int end = addr + count;
 	unsigned int count_83 = 0, size_83 = 0; // count_83: address, size_83: length
 	unsigned int count_84 = 0, size_84 = 0; // count_84: address, size_84: length
-	unsigned int pack_num = 0;
+    int pack_num = 0;
     /*
      * sis_write_fw_info: Use 83 COMMAND
      * sis_write_fw_payload: Use 84 COMMAND
@@ -494,7 +495,7 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
                 continue;
             }
             
-            //msleep(1000);
+            msleep(1000);//TODO: Need or Not
 
             ret = sis_flash_rom();
             if (ret) {
