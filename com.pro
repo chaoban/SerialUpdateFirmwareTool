@@ -11,6 +11,7 @@ CONFIG -= app_bundle
 SOURCES += \
         CRC16.cpp \
         DoFirmwareUpdate.cpp \
+        SiSAdapter.cpp \
         main.cpp \
         scanserialport.cpp \
         sis_command.cpp
@@ -19,6 +20,7 @@ SOURCES += \
 HEADERS += \
     DoFirmwareUpdate.h \
     ExitStatus.h \
+    SiSAdapter.h \
     delay.h \
     sis_command.h \
     version.h

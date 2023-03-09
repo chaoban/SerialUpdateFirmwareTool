@@ -12,8 +12,9 @@
 #include "DoFirmwareUpdate.h"
 #include "version.h"
 #include "ExitStatus.h"
-
 //#pragma comment(lib, "Advapi32.lib")
+
+#define TIMEOUT_TIME 3000
 
 #if 0
 #define SIS_VERIFY {0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
@@ -25,25 +26,125 @@
 #define SIS_VERIFY_LENGTH 12
 #endif
 
-#define TIMEOUT_TIME 3000
-
-/*
- * 函式宣告
- */
-int uartTest(QString *);
-int readBinary(QString);
+const QStringList getComportRegKey();
+DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
+int testserialport(QString *ComPortName);
+int readBinary(QString path);
 void print_sep();
 extern int ScanPort();
 
-/*
- * 全域變數
- */
 unsigned char * fn; /* 讀取韌體檔案用 */
 QByteArray FirmwareString;
 QSerialPort serial; /* 開啟Serial Port用 */
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+    const int argumentCount = QCoreApplication::arguments().size();
+    const QStringList argumentList = QCoreApplication::arguments();
+    int exitCode = CT_EXIT_AP_FLOW_ERROR;
+    QString ComPortName;
+    QString FwFileName = "FW.BIN";
+    //FILE* input_file = 0;
+
+    QTextStream standardOutput(stdout);
+    bool userassign = false;
+
+    printVersion();
+
+    /* CHECK COMMAND ARGUMENTS */
+    switch (argumentCount) {
+        case 1:
+            ScanPort();
+            exitCode = testserialport(&ComPortName);
+            userassign = true;
+            return exitCode;  //CHAOBAN TEST FOR DEBUG
+        break;
+        case 2:
+            ComPortName = argumentList.at(1);
+            if(ComPortName.size()>4)
+            {
+                QString tmp = "\\\\.\\";
+                tmp.append(ComPortName);
+                ComPortName = tmp;
+            }
+            userassign = true;
+        break;
+        default:
+        break;
+    }
+
+    //TODO: PARSE COMMAND FORMAT
+
+    /*
+     * Get the Comm Port of SiS Device
+     */
+
+    //printf("\nSerial Port test:");
+    if (!userassign) {
+        exitCode = testserialport(&ComPortName);
+        if (exitCode) {
+            return exitCode;
+        }
+     }
+
+    /*
+     * OPEN LOCAL FIRMWARE BIN FILE
+     */
+    //printf("Open the Firmware file: ");
+    exitCode = readBinary(FwFileName);
+    if (exitCode) {
+        printf("Load Firmware Bin File Fails.\n");
+        exitCode = EXIT_ERR;
+        return exitCode;
+    }
+
+
+    /*
+     * OPEN SIS UART COMM PORT
+     */
+    qDebug() << "Open SiS" << ComPortName << "port";
+    serial.setPortName(ComPortName);
+
+    /*
+     * 下面這些UART設定預設寫死的
+     */
+    serial.setBaudRate(QSerialPort::Baud115200);
+    serial.setDataBits(QSerialPort::Data8);
+    serial.setParity(QSerialPort::NoParity);
+    serial.setStopBits(QSerialPort::OneStop);
+    serial.setFlowControl(QSerialPort::NoFlowControl);
+
+    if (!serial.open(QIODevice::ReadWrite)) {
+        standardOutput << QObject::tr("Failed to open port %1, error: %2")
+                          .arg(ComPortName, serial.errorString())
+                       << Qt::endl;
+        return CT_EXIT_NO_COMPORT;
+    }
+
+    printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
+
+    /* UPDATE FW */
+    exitCode = SISUpdateFlow();
+    if (exitCode) {
+        return exitCode;
+    }
+
+    /* GET FW ID */
+
+    printf("\nExit code : %d\n", exitCode);
+
+    if (serial.isOpen()) {
+        serial.close();
+    }
+
+    return exitCode;
+    //  return 0;
+    //  return a.exec();
+}
 
 const QStringList getComportRegKey()
 {
@@ -247,110 +348,4 @@ int readBinary(QString path)
 void print_sep()
 {
     printf( "-----\n" );
-}
-
-int main(int argc, char *argv[])
-{
-    QCoreApplication a(argc, argv);
-    const int argumentCount = QCoreApplication::arguments().size();
-    const QStringList argumentList = QCoreApplication::arguments();
-    int exitCode = CT_EXIT_AP_FLOW_ERROR;
-    QString ComPortName;
-    QString FwFileName = "FW.BIN";
-    //FILE* input_file = 0;
-    
-    QTextStream standardOutput(stdout);
-    bool userassign = false;
-
-    printVersion();
-
-    /* CHECK COMMAND ARGUMENTS */
-    switch (argumentCount) {
-        case 1:
-            ScanPort();
-            exitCode = testserialport(&ComPortName);
-            userassign = true;
-            return exitCode;  //CHAOBAN TEST FOR DEBUG
-        break;
-        case 2:
-            ComPortName = argumentList.at(1);
-            if(ComPortName.size()>4)
-            {
-                QString tmp = "\\\\.\\";
-                tmp.append(ComPortName);
-                ComPortName = tmp;
-            }
-            userassign = true;
-        break;
-        default:
-        break;
-    }
-
-    //TODO: PARSE COMMAND FORMAT
-
-    /*
-     * Get the Comm Port of SiS Device
-     */
-
-    //printf("\nSerial Port test:");
-    if (!userassign) {
-        exitCode = testserialport(&ComPortName);
-        if (exitCode) {
-            return exitCode;
-        }
-     }
-
-    /*
-     * OPEN LOCAL FIRMWARE BIN FILE
-     */
-    //printf("Open the Firmware file: ");
-    exitCode = readBinary(FwFileName);
-    if (exitCode) {
-        printf("Load Firmware Bin File Fails.\n");
-        exitCode = EXIT_ERR;
-        return exitCode;
-    }
-
-
-    /*
-     * OPEN SIS UART COMM PORT
-     */
-    qDebug() << "Open SiS" << ComPortName << "port";
-    serial.setPortName(ComPortName);
-
-    /*
-     * 下面這些UART設定預設寫死的
-     */
-    serial.setBaudRate(QSerialPort::Baud115200);
-    serial.setDataBits(QSerialPort::Data8);
-    serial.setParity(QSerialPort::NoParity);
-    serial.setStopBits(QSerialPort::OneStop);
-    serial.setFlowControl(QSerialPort::NoFlowControl);
-
-    if (!serial.open(QIODevice::ReadWrite)) {
-        standardOutput << QObject::tr("Failed to open port %1, error: %2")
-                          .arg(ComPortName, serial.errorString())
-                       << Qt::endl;
-        return CT_EXIT_NO_COMPORT;
-    }
-
-    printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
-
-    /* UPDATE FW */
-    exitCode = SISUpdateFlow();
-    if (exitCode) {
-        return exitCode;
-    }
-
-    /* GET FW ID */
-
-    printf("\nExit code : %d\n", exitCode);
-
-    if (serial.isOpen()) {
-        serial.close();
-    }
-
-    return exitCode;
-    //  return 0;
-    //  return a.exec();
 }

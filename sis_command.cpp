@@ -1,8 +1,7 @@
-﻿#include"sis_command.h"
+﻿#include "sis_command.h"
 
-
-void sis_make_83_buffer( quint8 *, unsigned int, int );
-void sis_make_84_buffer( quint8 *, const quint8 *, int);
+void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num );
+void sis_make_84_buffer( quint8 *buf, const quint8 *val, int count );
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 
 void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num )

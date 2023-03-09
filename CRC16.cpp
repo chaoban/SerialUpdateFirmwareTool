@@ -1,6 +1,4 @@
-﻿#include"sis_command.h"
-
-/**
+﻿/**
  * crc_itu_t - Compute the CRC-ITU-T for the data buffer
  *
  * @crc:     previous CRC value
@@ -10,12 +8,14 @@
  * Returns the updated CRC value
  */
 
-/*
- * 計算CRC
- * 會抓INPUT(Buf)的command欄位計算CRC
- * 然後再跟INPUT內的payload計算CRC
- */
+#include "sis_command.h"
+
 quint8 sis_calculate_output_crc( quint8* buf, int len );
+static inline quint16 crc_itu_t_byte(quint16 crc, const quint8 data);
+quint16 crc_itu_t(quint16 crc, const quint8 *buffer, size_t len);
+uint16_t cal_crc(unsigned char *cmd, int start, int end);
+uint16_t cal_crc_with_cmd (char* data, int start, int end, uint8_t cmd);
+void write_crc(unsigned char *buf, int start, int end);
 
 static const unsigned short crc16tab[256] = {
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
@@ -52,11 +52,29 @@ static const unsigned short crc16tab[256] = {
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
 };
 
+/*
+ * 計算CRC
+ * 會抓INPUT(Buf)的command欄位計算CRC
+ * 然後再跟INPUT內的payload計算CRC
+ * cmd = (buf + 2);
+ * payload = (buf + 3);
+ */
+quint8 sis_calculate_output_crc( quint8* buf, int len )
+{
+    quint16 crc;
+    quint8 *cmd, *payload;
+    cmd = (buf + BIT_CMD);
+    payload = (buf + BIT_PALD);
+    crc = crc_itu_t(0x0000, cmd, 1);
+    crc = crc_itu_t(crc, payload, len - BIT_PALD);
+    crc = crc & 0xff;
+    return crc;
+}
+
 static inline quint16 crc_itu_t_byte(quint16 crc, const quint8 data)
 {
     return (crc << 8) ^ crc16tab[((crc >> 8) ^ data) & 0xff];
 }
-
 
 quint16 crc_itu_t(quint16 crc, const quint8 *buffer, size_t len)
 {
@@ -64,7 +82,6 @@ quint16 crc_itu_t(quint16 crc, const quint8 *buffer, size_t len)
         crc = crc_itu_t_byte(crc, *buffer++);
     return crc;
 }
-
 
 uint16_t cal_crc(unsigned char *cmd, int start, int end)
 {
@@ -93,23 +110,4 @@ void write_crc(unsigned char *buf, int start, int end)
     crc = cal_crc(buf, start , end);
     buf[end+1] = (crc >> 8) & 0xff;
     buf[end+2] = crc & 0xff;
-}
-
-/*
- * 計算CRC
- * 會抓INPUT(Buf)的command欄位計算CRC
- * 然後再跟INPUT內的payload計算CRC
- * cmd = (buf + 2);
- * payload = (buf + 3);
- */
-quint8 sis_calculate_output_crc( quint8* buf, int len )
-{
-    quint16 crc;
-    quint8 *cmd, *payload;
-    cmd = (buf + BIT_CMD);
-    payload = (buf + BIT_PALD);
-    crc = crc_itu_t(0x0000, cmd, 1);
-    crc = crc_itu_t(crc, payload, len - BIT_PALD);
-    crc = crc & 0xff;
-    return crc;
 }

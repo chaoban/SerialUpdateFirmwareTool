@@ -14,18 +14,14 @@
 #include "sis_command.h"
 #include "delay.h"
 
-//#define CHAOBAN_TEST    1
+//#define CHAOBAN_TEST              1
+#define _DBG_DISABLE_READCMD      1
 
-/*
- * 函式宣告
- */
+extern void sis_make_83_buffer( quint8 *, unsigned int, int );
+extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 extern void print_sep();
 
-
-/*
- * 全域變數
- */
 uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
 extern unsigned char * fn; /* 讀取韌體檔案用 */
 extern QSerialPort serial;
@@ -52,7 +48,7 @@ static int sis_command_for_write(int wlength, unsigned char *wdata)
     //appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
 
     writeData.resize(5);
-    writeData[BIT_UART_ID] = GR_UART_ID;
+    writeData[BIT_UART_ID] = GR_CMD_ID;
     writeData[BIT_OP_LSB] = GR_OP_WR;
     writeData[BIT_OP_MSB] = GR_OP;
     writeData[BIT_SIZE_LSB] = (wlength & 0xff);
@@ -135,8 +131,14 @@ bool sis_switch_to_cmd_mode()
     uint8_t tmpbuf[MAX_BYTE] = {0};
 //chaoban test
 //    uint8_t sis817_cmd_active[12] = {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44};
-    uint8_t sis817_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x51, 0x09};
-    uint8_t sis817_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 0x00/*CRC16*/, CMD_SISXMODE, 0x21, 0x01};
+    uint8_t sis817_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 
+                                               0x00/*CRC16*/, 
+                                               CMD_SISXMODE, 
+                                               0x51, 0x09};
+    uint8_t sis817_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 
+                                                         0x00/*CRC16*/, 
+                                                         CMD_SISXMODE, 
+                                                         0x21, 0x01};
 
 /* 計算CRC並填入適當欄位內
  * 使用 sis_calculate_output_crc( u8* buf, int len )
@@ -158,13 +160,14 @@ bool sis_switch_to_cmd_mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#if 1
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
     }
 
+    //許多重複的Code，要refine檢查機制
     if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(PWR_CMD_ACTIVE)\n";
         return false;
@@ -187,13 +190,14 @@ bool sis_switch_to_cmd_mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#if 1
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
     }
 
+    //許多重複的Code，要refine檢查機制
     if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         qDebug() << "SiS SEND Switch CMD Return NACK - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
@@ -276,12 +280,14 @@ static bool sis_get_bootflag(quint32 *bootflag)
 
     // read
     //TODO: Chaoban test: What is the read buf format ??
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
 
     //pr_err("sis_get_bootflag read data:\n");
     //PrintBuffer(0, MAX_BYTE, tmpbuf);
 
     *bootflag = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
+#endif
     return EXIT_OK;
 }
 
@@ -323,8 +329,7 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#if 1
-    // read
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
 
     /*pr_err("sis_get_fw_info read data:\n");
@@ -343,6 +348,39 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
 //static bool sis_reset_cmd()
 bool sis_reset_cmd()
 {
+    int ret = 0;
+	uint8_t tmpbuf[MAX_BYTE] = {0};
+	uint8_t sis_cmd_82[CMD_SZ_RESET] = {SIS_REPORTID,
+                                        0x00, /*CRC*/
+                                        CMD_SISRESET};
+
+    sis_cmd_82[BIT_CRC] = sis_calculate_output_crc(sis_cmd_82, CMD_SZ_RESET);
+
+    ret = sis_command_for_write(sizeof(sis_cmd_82), sis_cmd_82);
+    if (ret < 0) {
+	    printf("sis SEND reset CMD Failed - 82(RESET) %d\n", ret);
+	    return -1;
+    }
+
+#ifdef _DBG_DISABLE_READCMD
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    if (ret < 0) {
+	    printf("sis READ reset CMD Failed - 82(RESET) %d\n", ret);
+	    return -1;
+    }
+
+    //PrintBuffer(0, 10, tmpbuf);
+    //許多重複的Code，要refine檢查機制
+    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
+        qDebug() << "sis READ reset CMD Return NACK - 82(RESET)\n";
+        return false;
+    }else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
+        qDebug() << "sis READ reset CMD Return Unknown- 82(RESET)\n";
+        return false;
+    }
+#endif
+
+    printf("sis reset success.\n");
     return EXIT_OK;
 }
 
@@ -360,23 +398,22 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
 	uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
 	sis_make_83_buffer(sis817_cmd_83, addr, pack_num);
-	//pr_err("sis_write_fw_info cmd_83:\n"); 
-	//PrintBuffer(0, CMD_83_BYTE, sis817_cmd_83);
-	// write
+	
     ret = sis_command_for_write(sizeof(sis817_cmd_83), sis817_cmd_83);
 	if (ret < 0) {
         printf("sis SEND write CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return -1;
 	}
-	// read	
+
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
 	if (ret < 0) {
         printf("sis READ write CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return -1;
 	}
-	//pr_err("sis_write_fw_info tmpbuf:\n"); 
-	//PrintBuffer(0, 14, tmpbuf);
+
 	// Check ACK
+    //許多重複的Code，要refine檢查機制
     if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         printf("sis READ write CMD Return NACK - 83(WRI_FW_DATA_INFO)\n");
         return false;
@@ -385,7 +422,7 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
         printf("sis READ write CMD Return Unknown- 83(WRI_FW_DATA_INFO)\n");
         return false;
     }
-    
+#endif
     return EXIT_OK;
 }
 
@@ -397,7 +434,6 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
 static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 {
     int ret = 0;
-    //int len = BUF_PAYLOAD_PLACE + count;
     quint8 len = BIT_PALD + count;
     quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
     quint8 *sis817_cmd_84 = (quint8 *)malloc(sizeof(len));
@@ -407,24 +443,24 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
         printf("sis alloc buffer error\n");
         return -1;
     }
+
     sis_make_84_buffer(sis817_cmd_84, val, count);
-    //pr_err("sis_command_for_write\n");
-    //PrintBuffer(0, 64, sis817_cmd_84);
-    // write
+
     ret = sis_command_for_write(len, sis817_cmd_84);
     if (ret < 0) {
         printf("sis SEND write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return -1;
     }
-    // read
+
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         printf("sis READ write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return -1;
     }
-    //pr_err("sis_command_for_read\n");
-    //PrintBuffer(0, 10, tmpbuf);
+
     // Check ACK
+    //許多重複的Code，要refine檢查機制
     if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
         printf("sis READ write CMD Return NACK - 84(WRI_FW_DATA_PAYL)\n");
         return false;
@@ -433,6 +469,7 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
         printf("sis READ write CMD Return Unknown- 84(WRI_FW_DATA_PAYL)\n");
         return false;
     }
+#endif
 
     free(sis817_cmd_84);
     return EXIT_OK;
@@ -441,6 +478,41 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 //static bool sis_flash_rom()
 bool sis_flash_rom()
 {
+    int ret = 0;
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+	uint8_t sis_cmd_81[CMD_SZ_FLASH] = {SIS_REPORTID, 
+                                        0x00, /* CRC */ 
+                                        CMD_SISFLASH};
+
+    sis_cmd_81[BIT_CRC] = sis_calculate_output_crc( sis_cmd_81, CMD_SZ_FLASH );
+
+    ret = sis_command_for_write(sizeof(sis_cmd_81), sis_cmd_81);
+    if (ret < 0) {
+	    printf("sis SEND flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
+	    return -1;
+    }
+
+    msleep(2000);
+	
+#ifdef _DBG_DISABLE_READCMD    
+    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    if (ret < 0) {
+	    printf("sis READ flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
+	    return -1;
+    }
+
+    //PrintBuffer(0, 10, tmpbuf);
+    //許多重複的Code，要refine檢查機制
+    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
+        printf("sis READ flash CMD Return NACK - 81(FLASH_ROM)\n");
+        return false;
+    }
+    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
+        printf("sis READ flash CMD Return Unknown- 81(FLASH_ROM)\n");
+        return false;
+    }
+#endif
+
     return EXIT_OK;
 }
 
@@ -470,12 +542,13 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
     count_83 = addr;
     while (count_83 < end) {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
-        //printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
+        printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
         pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);//chaoban test
         for (block_retry = 0; block_retry < 3; block_retry++) {
             printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
 
             ret = sis_write_fw_info(count_83, pack_num);
+
             if (ret) {
                 printf("sis Write FW info (0x83) error.\n");
                 continue;
@@ -484,7 +557,9 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
             for (i = 0; i < pack_num; i++) {
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE)? 
                     PACK_SIZE : (count_83 + size_83 - count_84);
-                //printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
+
+                printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
+
                 ret = sis_write_fw_payload(data + count_84, size_84);
                 if (ret)
                     break;
@@ -638,7 +713,7 @@ static bool sis_get_bootloader_id_crc(quint32 *bootloader_version, quint32 *boot
         return false;
     }
 
-    // read
+#ifdef _DBG_DISABLE_READCMD
     ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
 
     //printf("sis_get_bootloader_id_crc read data:\n");
@@ -646,6 +721,7 @@ static bool sis_get_bootloader_id_crc(quint32 *bootloader_version, quint32 *boot
 
     *bootloader_version = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
     *bootloader_crc = (tmpbuf[12] << 24) | (tmpbuf[13] << 16) | (tmpbuf[14] << 8) | (tmpbuf[15]);
+#endif
     return true;
 }
 

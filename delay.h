@@ -4,7 +4,7 @@
 #include <QEventLoop>
 #include <QTimer>
 
-void msleep(unsigned int);
+void msleep(unsigned int msec);
 
 /*
  * Delay msec for QT

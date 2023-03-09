@@ -47,7 +47,6 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-
 #include <QCoreApplication>
 #include <QSerialPortInfo>
 #include <QTextStream>

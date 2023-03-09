@@ -1,19 +1,22 @@
 ﻿#ifndef SIS_COMMAND_H
 #define SIS_COMMAND_H
 #include <QTextStream>
-
-extern void sis_make_83_buffer( quint8 *, unsigned int, int );
-extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
+#include "SiSAdapter.h"
 
 #define MAX_BYTE    64
 
 //SIS DEBUG
-#define SIS_ERR                 -1
+#define SIS_ERR         -1
 
 //SIS UPDATE FW
-#define RAM_SIZE		8*1024
+#define RAM_SIZE		_12K
 #define PACK_SIZE		52
 
+//SIS OP CODE
+#define BIT_SISID               0
+#define BIT_CRC                 1
+#define BIT_CMD                 2
+#define BIT_PALD                3
 
 //SIS CMD DEFINE
 #define CMD_SISFLASH           0x81
@@ -37,8 +40,6 @@ extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
 //FW ADDRESS
 #define ADDR_FW_INFO            0xA0004000
 
-
-
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09
 #define BUF_ACK_MSB             0x0A
@@ -47,29 +48,21 @@ extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
 #define BUF_NACK_L				0xAD
 #define BUF_NACK_H				0xDE
 
-
 #define BUF_PAYLOAD_PLACE       8
 #define INT_OUT_REPORT          0x09
-
 
 #define SIS_GENERAL_TIMEOUT     1000
 #define SIS_BOOTFLAG_P810       0x50383130
 
-//GR UART CMD FORMAT
-#define GR_UART_ID              0x12
+//GR UART CMD ID
+#define GR_CMD_ID              0x12
+#define GR_EVENT_ID             0x0E
 //GR OP CODE
 #define BIT_UART_ID             0
 #define BIT_OP_LSB              1
 #define BIT_OP_MSB              2
 #define BIT_SIZE_LSB            3
 #define BIT_SIZE_MSB            4
-
-//SIS OP CODE
-#define BIT_SISID               0
-#define BIT_CRC                 1
-#define BIT_CMD                 2
-#define BIT_PALD                3
-
 
 #define GR_OP                   0x80
 #define GR_OP_INIT              0x01
