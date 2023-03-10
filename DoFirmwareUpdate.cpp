@@ -19,9 +19,9 @@
 
 bool Chect_Read_From_FW(uint8_t *buffer);
 uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
-extern void sis_make_83_buffer( quint8 *, unsigned int, int );
-extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
-extern quint8 sis_calculate_output_crc( quint8* buf, int len );
+extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
+extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
+extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 extern void print_sep();
 extern unsigned char * fn; /* 讀取韌體檔案用 */
 extern QSerialPort serial;
@@ -31,7 +31,7 @@ extern QByteArray FirmwareString;
 /*
  * I2C Read Write Commands
  */
-static int sis_command_for_write(int wlength, unsigned char *wdata)
+static int sis_Command_For_Write(int wlength, unsigned char *wdata)
 {
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
@@ -90,7 +90,7 @@ static int sis_command_for_write(int wlength, unsigned char *wdata)
     return ret;
 }
 
-static int sis_command_for_read(int rlength, unsigned char *rdata)
+static int sis_Command_For_Read(int rlength, unsigned char *rdata)
 {
     int ret = EXIT_OK;
 
@@ -125,7 +125,7 @@ static int sis_command_for_read(int rlength, unsigned char *rdata)
  * Change Mode
  */
 
-bool sis_switch_to_cmd_mode()
+bool sis_Switch_Cmd_Mode()
 {
     int ret = -1;
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -141,19 +141,19 @@ bool sis_switch_to_cmd_mode()
                                                          0x21, 0x01};
 
 /* 計算CRC並填入適當欄位內
- * 使用 sis_calculate_output_crc( u8* buf, int len )
+ * 使用 sis_Calculate_Output_Crc( u8* buf, int len )
  * buf: 要計算的command封包
  * len: command封包的長度
  * 以Change mode為例:
  * [0x09, CRC, 0x85, 0x51, 0x09]
  */
-    sis817_cmd_active[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_active, sizeof(sis817_cmd_active) );
-    sis817_cmd_enable_diagnosis[BIT_CRC] = sis_calculate_output_crc( sis817_cmd_enable_diagnosis, sizeof(sis817_cmd_enable_diagnosis) );
+    sis817_cmd_active[BIT_CRC] = sis_Calculate_Output_Crc( sis817_cmd_active, sizeof(sis817_cmd_active) );
+    sis817_cmd_enable_diagnosis[BIT_CRC] = sis_Calculate_Output_Crc( sis817_cmd_enable_diagnosis, sizeof(sis817_cmd_enable_diagnosis) );
     //printf("CRC=%x\n", sis817_cmd_active[BIT_CRC]);
     //printf("CRC=%x\n", sis817_cmd_enable_diagnosis[BIT_CRC]);
 
     //Send 85 CMD - PWR_CMD_ACTIVE
-    ret = sis_command_for_write(sizeof(sis817_cmd_active), sis817_cmd_active);
+    ret = sis_Command_For_Write(sizeof(sis817_cmd_active), sis817_cmd_active);
     if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
@@ -161,7 +161,7 @@ bool sis_switch_to_cmd_mode()
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
@@ -177,7 +177,7 @@ bool sis_switch_to_cmd_mode()
     memset(tmpbuf, 0, sizeof(tmpbuf));
 
     //Send 85 CMD - ENABLE_DIAGNOSIS_MODE
-    ret = sis_command_for_write(sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
+    ret = sis_Command_For_Write(sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
     if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
@@ -185,7 +185,7 @@ bool sis_switch_to_cmd_mode()
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
@@ -209,7 +209,7 @@ bool sis_switch_to_cmd_mode()
  * POWER_MODE_SLEEP,  chip on the sleep mode.
  * Return:Ture is change power mode success.
  */
-bool sis_change_fw_mode(enum SIS_817_POWER_MODE mode)
+bool sis_Change_Mode(enum SIS_817_POWER_MODE mode)
 {
     switch(mode)
     {
@@ -252,16 +252,16 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
      }
 }
 
-static bool sis_get_bootflag(quint32 *bootflag)
+static bool sis_Get_Bootflag(quint32 *bootflag)
 {
     int ret = 0;
     uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID,0x00/*CRC*/,
             CMD_SISREAD, 0xf0, 0xef, 0x01, 0xa0, 0x34, 0x00};
-        sis_cmd_get_bootflag[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_bootflag,
+        sis_cmd_get_bootflag[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootflag,
                                                                  sizeof(sis_cmd_get_bootflag) );
     // write
-    ret = sis_command_for_write(sizeof(sis_cmd_get_bootflag), sis_cmd_get_bootflag);
+    ret = sis_Command_For_Write(sizeof(sis_cmd_get_bootflag), sis_cmd_get_bootflag);
     if (ret < 0) {
         printf("sis SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
         return -1;
@@ -270,9 +270,9 @@ static bool sis_get_bootflag(quint32 *bootflag)
     // read
     //TODO: Chaoban test: What is the read buf format ??
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
-    //pr_err("sis_get_bootflag read data:\n");
+    //pr_err("sis_Get_Bootflag read data:\n");
     //PrintBuffer(0, MAX_BYTE, tmpbuf);
 
     *bootflag = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
@@ -307,11 +307,11 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
                                                ((ADDR_FW_INFO >> 24) & 0xff),
                                               R_SIZE_LSB, R_SIZE_MSB};
     //計算及填入CRC
-    sis_cmd_get_FW_INFO[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_FW_INFO,
+    sis_cmd_get_FW_INFO[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_FW_INFO,
                                                             sizeof(sis_cmd_get_FW_INFO));
 
     // write
-    ret = sis_command_for_write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
+    ret = sis_Command_For_Write(sizeof(sis_cmd_get_FW_INFO), sis_cmd_get_FW_INFO);
     if (ret < 0) {
         printf("sis SEND Get FW ID CMD Failed - 86 %d\n", ret);
         return -1;
@@ -319,7 +319,7 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
     /*pr_err("sis_get_fw_info read data:\n");
     PrintBuffer(0, MAX_BYTE, tmpbuf);*/
@@ -343,16 +343,16 @@ bool sis_reset_cmd()
                                         0x00, /*CRC*/
                                         CMD_SISRESET};
 
-    sis_cmd_82[BIT_CRC] = sis_calculate_output_crc(sis_cmd_82, CMD_SZ_RESET);
+    sis_cmd_82[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_82, CMD_SZ_RESET);
 
-    ret = sis_command_for_write(sizeof(sis_cmd_82), sis_cmd_82);
+    ret = sis_Command_For_Write(sizeof(sis_cmd_82), sis_cmd_82);
     if (ret < 0) {
 	    printf("sis SEND reset CMD Failed - 82(RESET) %d\n", ret);
 	    return -1;
     }
 
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ reset CMD Failed - 82(RESET) %d\n", ret);
 	    return -1;
@@ -378,16 +378,16 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
     int ret = 0;
 	uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
-	sis_make_83_buffer(sis817_cmd_83, addr, pack_num);
+    sis_Make_83_Buffer(sis817_cmd_83, addr, pack_num);
 	
-    ret = sis_command_for_write(sizeof(sis817_cmd_83), sis817_cmd_83);
+    ret = sis_Command_For_Write(sizeof(sis817_cmd_83), sis817_cmd_83);
 	if (ret < 0) {
         printf("sis SEND write CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return -1;
 	}
 
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 	if (ret < 0) {
         printf("sis READ write CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return -1;
@@ -418,16 +418,16 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
         return -1;
     }
 
-    sis_make_84_buffer(sis817_cmd_84, val, count);
+    sis_Make_84_Buffer(sis817_cmd_84, val, count);
 
-    ret = sis_command_for_write(len, sis817_cmd_84);
+    ret = sis_Command_For_Write(len, sis817_cmd_84);
     if (ret < 0) {
         printf("sis SEND write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return -1;
     }
 
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         printf("sis READ write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return -1;
@@ -451,9 +451,9 @@ bool sis_flash_rom()
                                         0x00, /* CRC */ 
                                         CMD_SISFLASH};
 
-    sis_cmd_81[BIT_CRC] = sis_calculate_output_crc( sis_cmd_81, CMD_SZ_FLASH );
+    sis_cmd_81[BIT_CRC] = sis_Calculate_Output_Crc( sis_cmd_81, CMD_SZ_FLASH );
 
-    ret = sis_command_for_write(sizeof(sis_cmd_81), sis_cmd_81);
+    ret = sis_Command_For_Write(sizeof(sis_cmd_81), sis_cmd_81);
     if (ret < 0) {
 	    printf("sis SEND flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
 	    return -1;
@@ -462,7 +462,7 @@ bool sis_flash_rom()
     msleep(2000);
 	
 #ifdef _DBG_DISABLE_READCMD    
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
 	    return -1;
@@ -555,13 +555,13 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
 }
 
 
-static bool sis_update_fw(quint8 *fn, bool update_bootloader)
+static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
 {
     int ret = 0;
 
 //FOR DEBUG FIRMWARE DATA
 #if 0
-    printf("Enter sis_update_fw()\n");
+    printf("Enter sis_Update_Fw()\n");
     qDebug() << FirmwareString[0];
     qDebug() << FirmwareString[1];
     qDebug() << FirmwareString[2];
@@ -657,26 +657,26 @@ static bool sis_update_fw(quint8 *fn, bool update_bootloader)
     return EXIT_OK;
 }
 
-static bool sis_get_bootloader_id_crc(quint32 *bootloader_version, quint32 *bootloader_crc)
+static bool sis_Get_Bootloader_Id_Crc(quint32 *bootloader_version, quint32 *bootloader_crc)
 {
     int ret = 0;
     //int i=0;
     uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID,
         0x00, CMD_SISREAD, 0x30, 0x02, 0x00, 0xa0, 0x34, 0x00};
-    sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_calculate_output_crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
+    sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
 
 // write
-    ret = sis_command_for_write(sizeof(sis_cmd_get_bootloader_id_crc), sis_cmd_get_bootloader_id_crc);
+    ret = sis_Command_For_Write(sizeof(sis_cmd_get_bootloader_id_crc), sis_cmd_get_bootloader_id_crc);
     if (ret < 0) {
         printf("sis SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
         return false;
     }
 
 #ifdef _DBG_DISABLE_READCMD
-    ret = sis_command_for_read(sizeof(tmpbuf), tmpbuf);
+    ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
-    //printf("sis_get_bootloader_id_crc read data:\n");
+    //printf("sis_Get_Bootloader_Id_Crc read data:\n");
     //PrintBuffer(0, MAX_BYTE, tmpbuf);
 
     *bootloader_version = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
@@ -718,8 +718,8 @@ int SISUpdateFlow()
      */
 #if 1
     printf("Switch FW Mode\n");
-    if (!sis_switch_to_cmd_mode()) {
-        qDebug() << "Error: sis_switch_to_cmd_mode Fails";
+    if (!sis_Switch_Cmd_Mode()) {
+        qDebug() << "Error: sis_Switch_Cmd_Mode Fails";
         return EXIT_ERR;
     }
 #else
@@ -783,11 +783,11 @@ int SISUpdateFlow()
 
     /*
      * Get BootFlag
-     * sis_get_bootflag()
+     * sis_Get_Bootflag()
      */
 #if 0
     printf("Get BootFlag\n");
-    ret = sis_get_bootflag(&bootflag);
+    ret = sis_Get_Bootflag(&bootflag);
     if (ret) {
         printf("sis get bootflag failed %d\n", ret);
     }
@@ -824,13 +824,13 @@ int SISUpdateFlow()
 
     /*
      * Get Bootloader ID and Bootloader CRC
-     * sis_get_bootloader_id_crc
+     * sis_Get_Bootloader_Id_Crc
      */
     //TODO
     //CHAOBAN TEST
 #if 0
     printf("Get Bootloader ID and Bootloader CRC\n");
-    ret = sis_get_bootloader_id_crc(&bootloader_version, &bootloader_crc_version);
+    ret = sis_Get_Bootloader_Id_Crc(&bootloader_version, &bootloader_crc_version);
     if (ret) {
         printf("sis get bootloader id or crc failed %d\n", ret);
     }
@@ -871,7 +871,7 @@ int SISUpdateFlow()
 
     /*
      * Update FW
-     * sis_update_fw
+     * sis_Update_Fw
      */
 #if 0
     printf("START FIRMWARE UPDATE!!!\n");
@@ -884,8 +884,8 @@ int SISUpdateFlow()
             sis_fw_data[0x4000] = 0x99;
             sis_fw_data[0x4001] = 0x99;
 
-            //ret = sis_update_fw(FirmwareString, update_boot);
-            ret = sis_update_fw(sis_fw_data, update_boot);
+            //ret = sis_Update_Fw(FirmwareString, update_boot);
+            ret = sis_Update_Fw(sis_fw_data, update_boot);
             printf("update_fw_initprobe %d\n", update_fw_initprobe);
 
             if (ret) {
@@ -910,8 +910,8 @@ int SISUpdateFlow()
         //goto work_mode;//TODO: CHAOBAN TEST
     }
 #else
-    //ret = sis_update_fw(sis_fw_data, update_boot);
-    ret = sis_update_fw(fn, update_boot);
+    //ret = sis_Update_Fw(sis_fw_data, update_boot);
+    ret = sis_Update_Fw(fn, update_boot);
 
     if (ret) {
         printf("sis update fw failed %d\n", ret);

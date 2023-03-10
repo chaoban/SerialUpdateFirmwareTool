@@ -28,7 +28,7 @@
 
 const QStringList getComportRegKey();
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
-int testserialport(QString *ComPortName);
+int testSerialPort(QString *ComPortName);
 int readBinary(QString path);
 void print_sep();
 extern int ScanPort();
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     switch (argumentCount) {
         case 1:
             ScanPort();
-            exitCode = testserialport(&ComPortName);
+            exitCode = testSerialPort(&ComPortName);
             userassign = true;
             return exitCode;  //CHAOBAN TEST FOR DEBUG
         break;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 
     //printf("\nSerial Port test:");
     if (!userassign) {
-        exitCode = testserialport(&ComPortName);
+        exitCode = testSerialPort(&ComPortName);
         if (exitCode) {
             return exitCode;
         }
@@ -184,7 +184,7 @@ DWORD WINAPI RcvWaitProc(LPVOID lpParamter)
     return(0L);
 }
 
-int testserialport(QString *ComPortName)
+int testSerialPort(QString *ComPortName)
 {
     printf("\nList all com port : ");
     QStringList comports = getComportRegKey();

@@ -1,10 +1,10 @@
 ﻿#include "sis_command.h"
 
-void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num );
-void sis_make_84_buffer( quint8 *buf, const quint8 *val, int count );
-extern quint8 sis_calculate_output_crc( quint8* buf, int len );
+void sis_Make_83_Buffer( quint8 *buf, unsigned int addr, int pack_num );
+void sis_Make_84_Buffer( quint8 *buf, const quint8 *val, int count );
+extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 
-void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num )
+void sis_Make_83_Buffer( quint8 *buf, unsigned int addr, int pack_num )
 {
     int len = CMD_SZ_UPDATE;
 
@@ -19,11 +19,11 @@ void sis_make_83_buffer( quint8 *buf, unsigned int addr, int pack_num )
     *(buf + 8) = (pack_num >> 8) & 0xff;
 
     // crc
-    *(buf + BIT_CRC) = sis_calculate_output_crc( buf, len );
+    *(buf + BIT_CRC) = sis_Calculate_Output_Crc( buf, len );
 }
 
 //TODO: CHAOBAN TEST: NEED TO CHECK
-void sis_make_84_buffer( quint8 *buf, const quint8 *val, int count )
+void sis_Make_84_Buffer( quint8 *buf, const quint8 *val, int count )
 {
     int i, j, k;
     int len = BIT_PALD + count;
@@ -47,6 +47,6 @@ void sis_make_84_buffer( quint8 *buf, const quint8 *val, int count )
         }
     }
     // crc
-    *(buf + BIT_CRC) = sis_calculate_output_crc( buf, len );
+    *(buf + BIT_CRC) = sis_Calculate_Output_Crc( buf, len );
 }
 

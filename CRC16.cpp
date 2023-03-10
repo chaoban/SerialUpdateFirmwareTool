@@ -10,7 +10,7 @@
 
 #include "sis_command.h"
 
-quint8 sis_calculate_output_crc( quint8* buf, int len );
+quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 static inline quint16 crc_itu_t_byte(quint16 crc, const quint8 data);
 quint16 crc_itu_t(quint16 crc, const quint8 *buffer, size_t len);
 uint16_t cal_crc(unsigned char *cmd, int start, int end);
@@ -59,7 +59,7 @@ static const unsigned short crc16tab[256] = {
  * cmd = (buf + 2);
  * payload = (buf + 3);
  */
-quint8 sis_calculate_output_crc( quint8* buf, int len )
+quint8 sis_Calculate_Output_Crc( quint8* buf, int len )
 {
     quint16 crc;
     quint8 *cmd, *payload;
