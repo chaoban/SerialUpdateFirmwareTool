@@ -17,12 +17,12 @@
 //#define CHAOBAN_TEST              1
 #define _DBG_DISABLE_READCMD      1
 
+bool Chect_Read_From_FW(uint8_t *buffer);
+uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
 extern void sis_make_83_buffer( quint8 *, unsigned int, int );
 extern void sis_make_84_buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_calculate_output_crc( quint8* buf, int len );
 extern void print_sep();
-
-uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
 extern unsigned char * fn; /* 讀取韌體檔案用 */
 extern QSerialPort serial;
 extern QByteArray FirmwareString;
@@ -167,15 +167,9 @@ bool sis_switch_to_cmd_mode()
         return false;
     }
 
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        qDebug() << "SiS SEND Switch CMD Return NACK - 85(PWR_CMD_ACTIVE)\n";
-        return false;
-    }
-    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        qDebug() << "SiS SEND Switch CMD Return Unknow- 85(PWR_CMD_ACTIVE)\n";
-        return false;
-    }
+    printf("SiS Send Switch CMD: ");
+    bool result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
 
     msleep(100);
@@ -197,14 +191,9 @@ bool sis_switch_to_cmd_mode()
         return false;
     }
 
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        qDebug() << "SiS SEND Switch CMD Return NACK - 85(ENABLE_DIAGNOSIS_MODE)\n";
-        return false;
-    }else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        qDebug() << "SiS SEND Switch CMD Return Unknow- 85(ENABLE_DIAGNOSIS_MODE)\n";
-        return false;
-    }
+    printf("SiS Send Switch CMD: ");
+    result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
 
     msleep(50);
@@ -369,18 +358,10 @@ bool sis_reset_cmd()
 	    return -1;
     }
 
-    //PrintBuffer(0, 10, tmpbuf);
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        qDebug() << "sis READ reset CMD Return NACK - 82(RESET)\n";
-        return false;
-    }else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        qDebug() << "sis READ reset CMD Return Unknown- 82(RESET)\n";
-        return false;
-    }
+    printf("SiS READ reset CMD: ");
+    bool result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
-
-    printf("sis reset success.\n");
     return EXIT_OK;
 }
 
@@ -412,16 +393,9 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
 		return -1;
 	}
 
-	// Check ACK
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        printf("sis READ write CMD Return NACK - 83(WRI_FW_DATA_INFO)\n");
-        return false;
-    }
-    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        printf("sis READ write CMD Return Unknown- 83(WRI_FW_DATA_INFO)\n");
-        return false;
-    }
+    printf("sis READ write CMD: ");
+    bool result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
     return EXIT_OK;
 }
@@ -459,16 +433,9 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
         return -1;
     }
 
-    // Check ACK
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        printf("sis READ write CMD Return NACK - 84(WRI_FW_DATA_PAYL)\n");
-        return false;
-    }
-    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        printf("sis READ write CMD Return Unknown- 84(WRI_FW_DATA_PAYL)\n");
-        return false;
-    }
+    printf("sis READ write CMD: ");
+    bool result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
 
     free(sis817_cmd_84);
@@ -501,16 +468,9 @@ bool sis_flash_rom()
 	    return -1;
     }
 
-    //PrintBuffer(0, 10, tmpbuf);
-    //許多重複的Code，要refine檢查機制
-    if ((tmpbuf[BUF_ACK_LSB] == BUF_NACK_L) && (tmpbuf[BUF_ACK_MSB] == BUF_NACK_H)) {
-        printf("sis READ flash CMD Return NACK - 81(FLASH_ROM)\n");
-        return false;
-    }
-    else if ((tmpbuf[BUF_ACK_LSB] != BUF_ACK_L) || (tmpbuf[BUF_ACK_MSB] != BUF_ACK_H)) {
-        printf("sis READ flash CMD Return Unknown- 81(FLASH_ROM)\n");
-        return false;
-    }
+    printf("sis READ flash CMD: ");
+    bool result = Chect_Read_From_FW(tmpbuf);
+    if (result == true) printf("Success\n");
 #endif
 
     return EXIT_OK;
@@ -974,5 +934,18 @@ int SISUpdateFlow()
     print_sep();
 
     return EXIT_OK;
+}
+
+bool Chect_Read_From_FW(uint8_t *buffer)
+{
+    if (buffer[BUF_ACK_LSB] == BUF_NACK_L && buffer[BUF_ACK_MSB] == BUF_NACK_H) {
+        printf("Return NACK\n");
+        return false;
+    } else if ((buffer[BUF_ACK_LSB] != BUF_ACK_L) || (buffer[BUF_ACK_MSB] != BUF_ACK_H)) {
+        printf("Return Unknow\n");
+        return false;
+    }
+
+    return true;
 }
 

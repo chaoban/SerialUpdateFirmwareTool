@@ -32,6 +32,7 @@ int testserialport(QString *ComPortName);
 int readBinary(QString path);
 void print_sep();
 extern int ScanPort();
+extern int getTimestamp();
 
 unsigned char * fn; /* 讀取韌體檔案用 */
 QByteArray FirmwareString;
@@ -54,6 +55,9 @@ int main(int argc, char *argv[])
     bool userassign = false;
 
     printVersion();
+
+    int mmddHHMM = getTimestamp();
+    printf("Time Stamp=%08x\n", mmddHHMM);
 
     /* CHECK COMMAND ARGUMENTS */
     switch (argumentCount) {
@@ -102,7 +106,6 @@ int main(int argc, char *argv[])
         return exitCode;
     }
 
-
     /*
      * OPEN SIS UART COMM PORT
      */
@@ -110,7 +113,7 @@ int main(int argc, char *argv[])
     serial.setPortName(ComPortName);
 
     /*
-     * 下面這些UART設定預設寫死的
+     * UART預設值
      */
     serial.setBaudRate(QSerialPort::Baud115200);
     serial.setDataBits(QSerialPort::Data8);
@@ -129,20 +132,14 @@ int main(int argc, char *argv[])
 
     /* UPDATE FW */
     exitCode = SISUpdateFlow();
-    if (exitCode) {
-        return exitCode;
-    }
 
     /* GET FW ID */
 
     printf("\nExit code : %d\n", exitCode);
 
-    if (serial.isOpen()) {
-        serial.close();
-    }
+    if (serial.isOpen()) serial.close();
 
     return exitCode;
-    //  return 0;
     //  return a.exec();
 }
 
