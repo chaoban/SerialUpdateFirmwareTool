@@ -51,7 +51,6 @@ static int sis_Command_For_Write(int wlength, unsigned char *wdata)
     writeData[BIT_SIZE_LSB] = (wlength & 0xff);
     writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
 
-
     writeData.append(appendData);
 
 #ifdef CHAOBAN_TEST
@@ -101,10 +100,9 @@ static int sis_Command_For_Read(int rlength, unsigned char *rdata)
         qDebug() << "New data available: " << serial.bytesAvailable();
         QByteArray rbuffer = serial.readAll();
 
+#ifdef CHAOBAN_TEST
         rdata = (unsigned char *)rbuffer.data();
         rlength = rbuffer.size();
-
-#ifdef CHAOBAN_TEST
         qDebug() << "Read:" << rbuffer;
         printf("rdata:");
         for (int i=0; i < rlength; i++) {
@@ -157,7 +155,7 @@ bool sis_Switch_Cmd_Mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
@@ -181,7 +179,7 @@ bool sis_Switch_Cmd_Mode()
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
@@ -252,7 +250,6 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
 static bool sis_Get_Bootflag(quint32 *bootflag)
 {
     int ret = 0;
-    uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID,0x00/*CRC*/,
             CMD_SISREAD, 0xf0, 0xef, 0x01, 0xa0, 0x34, 0x00};
         sis_cmd_get_bootflag[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootflag,
@@ -266,7 +263,8 @@ static bool sis_Get_Bootflag(quint32 *bootflag)
 
     // read
     //TODO: Chaoban test: What is the read buf format ??
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
+    uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
     //pr_err("sis_Get_Bootflag read data:\n");
@@ -288,7 +286,6 @@ static bool sis_get_fw_id(quint16 *fw_version)
 static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 {
     int ret = 0;
-    uint8_t tmpbuf[MAX_BYTE] = {0};
 //    uint8_t sis_cmd_get_FW_INFO[14] = {0x12, 0x04, 0x80, 0x09, 0x00,
 //            0x09, 0x00, 0x86, 0x00, 0x40, 0x00, 0xa0, 0x34, 0x00};
     int rlength = READ_SIZE;
@@ -315,7 +312,8 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
+    uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
     /*pr_err("sis_get_fw_info read data:\n");
@@ -335,7 +333,6 @@ static bool sis_get_fw_info(quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendo
 bool sis_reset_cmd()
 {
     int ret = 0;
-	uint8_t tmpbuf[MAX_BYTE] = {0};
 	uint8_t sis_cmd_82[CMD_SZ_RESET] = {SIS_REPORTID,
                                         0x00, /*CRC*/
                                         CMD_SISRESET};
@@ -348,7 +345,8 @@ bool sis_reset_cmd()
 	    return -1;
     }
 
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
+    uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ reset CMD Failed - 82(RESET) %d\n", ret);
@@ -373,8 +371,9 @@ bool sis_reset_cmd()
 static bool sis_write_fw_info(unsigned int addr, int pack_num)
 {
     int ret = 0;
-	uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
+
+    //printf("sis_write_fw_info()\n");
     sis_Make_83_Buffer(sis817_cmd_83, addr, pack_num);
 	
     ret = sis_Command_For_Write(sizeof(sis817_cmd_83), sis817_cmd_83);
@@ -383,7 +382,8 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
 		return -1;
 	}
 
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
+    uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 	if (ret < 0) {
         printf("sis READ write CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
@@ -404,10 +404,10 @@ static bool sis_write_fw_info(unsigned int addr, int pack_num)
  */
 static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 {
+    //printf("sis_write_fw_payload()\n");
     int ret = 0;
     quint8 len = BIT_PALD + count;
-    quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
-    quint8 *sis817_cmd_84 = (quint8 *)malloc(sizeof(len));
+    quint8 *sis817_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
 
 
     if (!sis817_cmd_84) {
@@ -423,7 +423,8 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
         return -1;
     }
 
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
+    quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         printf("sis READ write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
@@ -442,8 +443,8 @@ static bool sis_write_fw_payload(const quint8 *val, unsigned int count)
 //static bool sis_flash_rom()
 bool sis_flash_rom()
 {
+    //printf("sis_flash_rom()\n");
     int ret = 0;
-    uint8_t tmpbuf[MAX_BYTE] = {0};
 	uint8_t sis_cmd_81[CMD_SZ_FLASH] = {SIS_REPORTID, 
                                         0x00, /* CRC */ 
                                         CMD_SISFLASH};
@@ -458,7 +459,8 @@ bool sis_flash_rom()
 
     msleep(2000);
 	
-#ifdef _DBG_DISABLE_READCMD    
+#ifndef _DBG_DISABLE_READCMD
+    uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
@@ -480,6 +482,57 @@ bool sis_clear_bootflag()
      * sis_write_fw_payload
      * sis_flash_rom
      */
+    int ret, retry, i;
+    int pack_num = 0;
+	unsigned int count_84 = 0, size_84 = 0;
+    unsigned char *tmpbuf;
+	
+    tmpbuf = (unsigned char*) malloc(64 * sizeof(unsigned char));
+    if (tmpbuf == NULL) {
+        printf("Failed to allocate memory.\n");
+        return 1;
+    }
+
+    memset(tmpbuf, 0, 64);
+
+    pack_num = ((BOOT_FLAG_SIZE + PACK_SIZE - 1) / PACK_SIZE);
+	for (retry = 0; retry < 3; retry++) {
+		//ret = sis_write_fw_info(0x0000efcc, 1, id);
+		printf("Write to addr = 0001e000 pack_num=%d \n", pack_num);
+		ret = sis_write_fw_info(0x0001e000, pack_num);
+		if (ret) {
+			printf("sis Write FW info (0x83) error.\n");
+			continue;
+		}
+		count_84 = 0x1e000;
+		for (i = 0; i < pack_num; i++) {
+			size_84 = (0x1f000 > (count_84 + PACK_SIZE))?
+				PACK_SIZE : (0x1f000 - count_84);
+			ret = sis_write_fw_payload(tmpbuf, size_84);
+			if (ret)
+				break;
+			count_84 += size_84;
+		}
+		if (ret) {
+			printf("sis Write FW payload (0x84) error\n");
+			continue;
+		}
+		//msleep(1000);
+		ret = sis_flash_rom();
+		if (ret) {
+			printf("sis Flash ROM (0x81) error.\n");
+			continue;
+		} else {
+			printf("sis update block success.\n");
+			break;
+		}	
+	}
+
+	free(tmpbuf);
+	if (ret < 0) {
+		printf("Retry timeout\n");
+		return -1;
+	}
     return EXIT_OK;
 }
 
@@ -499,8 +552,10 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
     count_83 = addr;
     while (count_83 < end) {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
+#if 0        
         printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
-        pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);//chaoban test
+#endif
+        pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);
         for (block_retry = 0; block_retry < 3; block_retry++) {
             printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
 
@@ -514,9 +569,9 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
             for (i = 0; i < pack_num; i++) {
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE)? 
                     PACK_SIZE : (count_83 + size_83 - count_84);
-
+#if 0
                 printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
-
+#endif
                 ret = sis_write_fw_payload(data + count_84, size_84);
                 if (ret)
                     break;
@@ -548,6 +603,7 @@ static bool sis_update_block(quint8 *data, unsigned int addr, unsigned int count
         }
     }
 
+    print_sep();
     return EXIT_OK;
 }
 
@@ -559,10 +615,6 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
 //FOR DEBUG FIRMWARE DATA
 #if 0
     printf("Enter sis_Update_Fw()\n");
-    qDebug() << FirmwareString[0];
-    qDebug() << FirmwareString[1];
-    qDebug() << FirmwareString[2];
-    qDebug() << FirmwareString[3];
     qDebug() << fn[0];
     qDebug() << fn[1];
     qDebug() << fn[2];
@@ -573,6 +625,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
      *     ADDRESS: 0x1e000, Length=0x1000
      *     Clear boot-flag to "0"
      */
+    printf("Clear boot flag\n");
     ret = sis_clear_bootflag();
     if (ret) {
         printf("sis Update fw fail at Clear boot flag.");
@@ -584,6 +637,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
     /* (2) Update main code 1
      *     ADDRESS: 0x4000, Length=0x1A000
      */
+    printf("Update main code 1\n");
     ret = sis_update_block(fn, 0x00004000, 0x0001A000);
     if (ret) {
         printf("sis Update fw fail at main code 1.");
@@ -595,6 +649,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
      *     ADDRESS: 0x6000, Length=0x1000
      */
 #if 0
+    printf("Update main code 2\n");
     ret = sis_update_block(fn, 0x00006000, 0x00001000);
     if (ret) {
         printf("sis Update fw fail at main code 2.");
@@ -607,6 +662,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
      *     ADDRESS: 0x4000, Length=0x2000
      */
 #if 0
+    printf("Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc\n");
     ret = sis_update_block(fn, 0x00004000, 0x00002000);
     if (ret) {
         printf("sis Update fw fail at fwinfo.");
@@ -615,10 +671,11 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
     }
 #endif
 
-    /* (5) Update boot code (if need update_boot)
+    /* (5) Update bootloader code (if need update_booloader)
      *     ADDRESS: 0x0, Length=0x4000
-     *     (Notes: if need update_boot)
+     *     (Notes: if need update_bootloader)
      */
+    printf("Update bootloader\n");
     if (update_bootloader) {
 	    ret = sis_update_block(fn, 0x00000000, 0x00004000);
 	    if (ret) {
@@ -632,6 +689,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
      *     ADDRESS: 0x1d000, Length=0x2000
      */
 #if 0
+    printf("Update rodata\n");
     ret = sis_update_block(fn, 0x0001d000, 0x00002000);
     if (ret) {
         printf("sis Update fw fail at rodata.");
@@ -643,7 +701,7 @@ static bool sis_Update_Fw(quint8 *fn, bool update_bootloader)
     /* (7) Burn Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
      */
-    //TODO: CHABAN TEST
+    printf("Burn Boot Flag\n");
     ret = sis_update_block(fn, 0x0001e000, 0x00001000);
     if (ret) {
         printf("sis Update fw fail at Burn Boot Flag.");
@@ -670,7 +728,7 @@ static bool sis_Get_Bootloader_Id_Crc(quint32 *bootloader_version, quint32 *boot
         return false;
     }
 
-#ifdef _DBG_DISABLE_READCMD
+#ifndef _DBG_DISABLE_READCMD
     ret = sis_Command_For_Read(sizeof(tmpbuf), tmpbuf);
 
     //printf("sis_Get_Bootloader_Id_Crc read data:\n");
@@ -682,7 +740,7 @@ static bool sis_Get_Bootloader_Id_Crc(quint32 *bootloader_version, quint32 *boot
     return true;
 }
 
-int SISUpdateFlow(quint8 *sis_fw_data)
+int SISUpdateFlow(quint8 *sis_fw_data, bool update_bootloader, bool force_update)
 {
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
@@ -703,18 +761,15 @@ int SISUpdateFlow(quint8 *sis_fw_data)
     quint32 bootflag = 0x00000000;
     quint32 bin_bootflag = 0x00000000;
 
-    bool update_boot = false;
-    bool force_update = false;
-
     int ret = -1;
 
-    qDebug() << "Update Firmware by" <<  serial.portName() << "port";
+    qDebug() << "Start Update Firmware by" <<  serial.portName() << "port";
 
     /*
      * Switch FW Mode
      */
 #if 1
-    printf("Switch FW Mode\n");
+    printf("Switch Firmware Mode\n");
     if (!sis_Switch_Cmd_Mode()) {
         qDebug() << "Error: sis_Switch_Cmd_Mode Fails";
         return EXIT_ERR;
@@ -722,14 +777,13 @@ int SISUpdateFlow(quint8 *sis_fw_data)
 #else
     printf("Temporarily canceled Switch FW Mode\n");
 #endif
-    print_sep();
 
     /*
      * Get FW Information and Check FW Info
      * sis_get_fw_info
      */
 #if 1
-    printf("Get FW Information\n");
+    printf("Get Firmware Information\n");
     ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
         printf("sis get fw info failed %d\n", ret);
@@ -737,7 +791,6 @@ int SISUpdateFlow(quint8 *sis_fw_data)
 #else
     printf("Temporarily canceled Get FW Information\n");
 #endif
-    print_sep();
 
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
@@ -760,21 +813,22 @@ int SISUpdateFlow(quint8 *sis_fw_data)
     //fw version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
     printf("sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
-//TODO
-//CHAOBAN TEST
+
+    print_sep();
+
     /*
      * Check FW Info
      */
-#if 1
-    printf("Check FW Info\n");
+#ifndef _DBG_DISABLE_CHECKFW
+    printf("Check Firmware Info\n");
     if ( (chip_id != bin_chip_id) || (tp_size != bin_tp_size) || (tp_vendor_id != bin_tp_vendor_id) || (task_id != bin_task_id) || (chip_type != bin_chip_type) ) {
-        printf("fw info not match, stop update fw.");
+        printf("Firmware info not match, stop update process!!");
         return EXIT_FAIL;
     }
    
     msleep(2000);
 #else
-    printf("Temporarily canceled Check FW Info\n");
+    printf("Temporarily canceled Check Firmware Info\n");
 #endif
     print_sep();
 
@@ -786,7 +840,7 @@ int SISUpdateFlow(quint8 *sis_fw_data)
     printf("Get BootFlag\n");
     ret = sis_Get_Bootflag(&bootflag);
     if (ret) {
-        printf("sis get bootflag failed %d\n", ret);
+        printf("sis get bootflag failed: %d\n", ret);
     }
 #else
     printf("Temporarily canceled get bootflag\n");
@@ -798,25 +852,26 @@ int SISUpdateFlow(quint8 *sis_fw_data)
      */
     //TODO
     //CHAOBAN TEST
-#if 1
     printf("Check BootFlag\n");
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
     printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
 
+#ifndef _DBG_DISABLE_CHECKFW
     if (bin_bootflag != SIS_BOOTFLAG_P810) {
-        printf("bin file broken, stop update fw.\n");
+        printf("Firmware Binary file broken, stop update process!!\n");
         return EXIT_FAIL;
     }
+#else
+    printf("Temporarily canceled Check BootFlag\n");
+#endif
 
     if (bootflag != SIS_BOOTFLAG_P810) {
-        printf("fw broken, force update fw.\n");
+        printf("Firmware broken, force update Firmware.\n");
         force_update = true;
     }
 
     msleep(2000);
-#else
-    printf("Temporarily canceled Check BootFlag\n");
-#endif
+
     print_sep();
 
     /*
@@ -849,12 +904,12 @@ int SISUpdateFlow(quint8 *sis_fw_data)
     printf("sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
 
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
-        update_boot = true;
-        printf("bootloader changed. update_boot flag on.\n");
+        update_bootloader = true;
+        printf("bootloader changed. update_bootloader flag on.\n");
     }
 
     //bin_fw_version = 0xab00; //test for update fw
-    //update_boot = true; //test for update bootloader
+    //update_bootloader = true; //test for update bootloader
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
         force_update = true;
@@ -868,16 +923,21 @@ int SISUpdateFlow(quint8 *sis_fw_data)
      * Update FW
      * sis_Update_Fw
      */
-#if 1
-    printf("START FIRMWARE UPDATE!!!\n");
-    if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
-            || force_update == true) {
-        //Special Update Flag : 0x9999: update by Driver
-        sis_fw_data[0x4000] = 0x99;
-        sis_fw_data[0x4001] = 0x99;
 
-        //ret = sis_Update_Fw(FirmwareString, update_boot);
-        ret = sis_Update_Fw(sis_fw_data, update_boot);
+    printf("START FIRMWARE UPDATE!!!\n");
+
+#ifdef _DBG_DISABLE_CHECKFW
+    force_update = true;
+    update_bootloader = false;
+#endif
+
+    if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
+            || force_update == true) { 
+        //Special Update Flag : 0x6613: update by serial tool
+        sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
+        sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
+
+        ret = sis_Update_Fw(sis_fw_data, update_bootloader);
 
         if (ret) {
             printf("sis update fw failed %d\n", ret);
@@ -893,15 +953,7 @@ int SISUpdateFlow(quint8 *sis_fw_data)
         printf("Current Firmware version is same or later than bin.\n");
         //goto work_mode;//TODO: CHAOBAN TEST
      }
-#else
-    //ret = sis_Update_Fw(sis_fw_data, update_boot);
-    ret = sis_Update_Fw(fn, update_boot);
 
-    if (ret) {
-        printf("sis update fw failed %d\n", ret);
-        return ret;
-    }
-#endif
     print_sep();
 
     /* Reset */

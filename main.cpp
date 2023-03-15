@@ -29,11 +29,12 @@ QByteArray FirmwareString;
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
-QString FwFileName = "FW.BIN";
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
+    //const int argumentCount = QCoreApplication::arguments().size();
+    //const QStringList argumentList = QCoreApplication::arguments();
     QTextStream standardOutput(stdout);
 
     QString ComPortName;
@@ -41,52 +42,35 @@ int main(int argc, char *argv[])
     bool scanSerialPort = false;
     bool serialPortAutoTest = false;
     bool serialPortAssign = false;
+    bool update_bootloader = false;
+    bool force_update = false;
     QString filename = "fw.bin";
     int wait_time = 0;
 
     printVersion();
 
     int mmddHHMM = getTimestamp();
-    printf("Time Stamp=%08x\n", mmddHHMM);
+    printf("Time Stamp: %08x\n", mmddHHMM);
 
-    /* CHECK COMMAND ARGUMENTS */
-    //TODO: PARSE COMMAND PARAMETERS
-#if 1    
+    print_sep();
+
+    /* 
+     * PARSE AND GET COMMAND ARGUMENTS 
+     */
     if (a.arguments().contains("-b")) {
-        //update_bootloader = true;
-        printf("update bootloader\n");
-    }
-    if (a.arguments().contains("-ba")) {
-        //update_bootloader_auto = true;
-        printf("update bootloader automatically\n");
-    }
-    if (a.arguments().contains("-g")) {
-        //reserve_RODATA = true;
-        printf("reserve RO data\n");
-    }
-    if (a.arguments().contains("-r")) {
-        //update_parameter = true;
-        printf("only update parameter\n");
+        update_bootloader = true;
+        printf("Argument: update bootloader\n");
     }
     if (a.arguments().contains("--force")) {
-        //force_update = true;
-        printf("force update\n");
-    }
-    if (a.arguments().contains("--jump")) {
-        //jump_check = true;
-        printf("jump parameter validation\n");
-    }
-    if (a.arguments().contains("-w=")) {
-        //wait_time = atoi(arg + 3);
-        printf("wait time set: %d\n", wait_time);
+        force_update = true;
+        printf("Argument: force update\n");
     }
     if (a.arguments().contains("-s")) {
         scanSerialPort = true;
-        printf("Scan All serial ports\n");
+        printf("Argument: Scan All serial ports\n");
     }
-
     /*
-     * -a: 自動測試並取得SIS Serial Port
+     * -a: 自動測試並取得連接SIS Device的Serial Port
      * -c: 使用者指定Serial Port
      *     如果使用者指定Serial Port，就不會再做自動測試
     */
@@ -97,25 +81,53 @@ int main(int argc, char *argv[])
         if (index + 1 < argc) {
             ComPortName = argv[index + 1];
         }
-        printf("Assign the Serial port to update\n");
+        printf("Argument: Assign the %s port to update\n", ComPortName.toStdString().c_str());
     } else if (a.arguments().contains("-a")) {
         serialPortAutoTest = true;
         serialPortAssign = false;
-        printf("Serial ports auto test for SIS device\n");
+        printf("Argument: Auto test all serial ports that connect to SiS device\n");
     }
     if (a.arguments().contains("-f")) {
         int index = a.arguments().indexOf("-f");
         if (index + 1 < argc) {
             filename = argv[index + 1];
         }
+        printf("Argument: firmware file name: %s\n", filename.toStdString().c_str());
+    }
+    if (a.arguments().contains("-ba")) {
+        //update_bootloader_auto = true;    //TODO
+        printf("Argument: update bootloader automatically\n");
+    }
+    if (a.arguments().contains("-g")) {
+        //reserve_RODATA = true;            //TODO
+        printf("Argument: reserve RO data\n");
+    }
+    if (a.arguments().contains("-r")) {
+        //update_parameter = true;          //TODO
+        printf("Argument: only update parameter\n");
+    }
+    if (a.arguments().contains("--jump")) {
+        //jump_check = true;                //TODO
+        printf("Argument: jump parameter validation\n");
+    }
+    if (a.arguments().contains("-w=")) {
+        //wait_time = atoi(arg + 3);        //TODO
+        printf("Argument: wait time set: %d\n", wait_time);
     }
 
+    print_sep();
+
+    /* Scan and list all available serial ports */
     if (scanSerialPort) 
         ScanPort();
     
+    /* Auto get available serial ports that connect to  SIS Device*/
     if (serialPortAutoTest) 
         exitCode = testSerialPort(&ComPortName);
     
+    /*
+     * OPEN SIS UART COMM PORT
+     */
     if ((serialPortAutoTest) || (serialPortAssign)) {
         if (ComPortName.size()>4) {
             QString tmp = "\\\\.\\";
@@ -123,9 +135,6 @@ int main(int argc, char *argv[])
             ComPortName = tmp;
         }
 
-        /*
-         * OPEN SIS UART COMM PORT
-         */
         qDebug() << "Open SiS" << ComPortName << "port";
         serial.setPortName(ComPortName);
 
@@ -146,60 +155,26 @@ int main(int argc, char *argv[])
         }
 
         printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
-    } 
-    
-#else
-
-    const int argumentCount = QCoreApplication::arguments().size();
-    const QStringList argumentList = QCoreApplication::arguments();
-    bool userassign = false;
-
-    switch (argumentCount) {
-        case 1:
-            ScanPort();
-            exitCode = testSerialPort(&ComPortName);
-            userassign = true;
-            return exitCode;  //CHAOBAN TEST FOR DEBUG
-        break;
-        case 2:
-            ComPortName = argumentList.at(1);
-            if(ComPortName.size()>4)
-            {
-                QString tmp = "\\\\.\\";
-                tmp.append(ComPortName);
-                ComPortName = tmp;
-            }
-            userassign = true;
-        break;
-        default:
-        break;
+    }
+    else {
+        printf("Do not have Open any Serial port, please see the HELP\n");
+        return EXIT_ERR;
     }
 
     /*
-     * Get the Comm Port of SiS Device
-     */
-    //printf("\nSerial Port test:");
-    if (!userassign) {
-        exitCode = testSerialPort(&ComPortName);
-        if (exitCode) {
-            return exitCode;
-        }
-     }
-#endif
-    /*
      * OPEN LOCAL FIRMWARE BIN FILE
      */
-    //printf("Open the Firmware file: ");
 #if 1
     quint8 *sis_fw_data;
     long file_size;
 
-    //TODO FILENAME!!!
     FILE* fp = fopen(filename.toStdString().c_str(), "rb");
     if (!fp) {
-        printf("Failed to open file\n");
+        printf("Failed to open the file: %s \n", filename.toStdString().c_str());
         return 1;
     }
+
+    printf("Open the file: %s success\n", filename.toStdString().c_str());
 
     fseek(fp, 0, SEEK_END);
     file_size = ftell(fp);
@@ -217,7 +192,7 @@ int main(int argc, char *argv[])
     fclose(fp);
 
 #else
-    exitCode = readBinary(FwFileName);
+    exitCode = readBinary("FW.BIN");
     if (exitCode) {
         printf("Load Firmware Bin File Fails.\n");
         exitCode = EXIT_ERR;
@@ -225,10 +200,16 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    print_sep();
+
     /* UPDATE FW */
-    exitCode = SISUpdateFlow(sis_fw_data);
+    exitCode = SISUpdateFlow(sis_fw_data, 
+                             update_bootloader, 
+                             force_update);
 
     /* GET FW ID */
+
+    print_sep();
 
     printf("\nExit code : %d\n", exitCode);
 

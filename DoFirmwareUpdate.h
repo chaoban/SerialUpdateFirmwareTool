@@ -5,7 +5,8 @@
 #include "ExitStatus.h"
 
 //#define CHAOBAN_TEST              1
-//#define _DBG_DISABLE_READCMD      1
+#define _DBG_DISABLE_READCMD        1
+#define _DBG_DISABLE_CHECKFW        1
 
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
@@ -16,7 +17,7 @@ enum SIS_817_POWER_MODE {
 
 enum SIS_817_POWER_MODE sis_get_fw_mode();
 
-int SISUpdateFlow(quint8 *sis_fw_data);
+int SISUpdateFlow(quint8 *sis_fw_data, bool update_bootloader, bool force_update);
 void sis_fw_softreset();
 bool sis_Switch_Cmd_Mode();
 bool sis_Switch_Work_Mode();

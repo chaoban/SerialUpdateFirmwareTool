@@ -11,7 +11,10 @@
 #define SIS_VERIFY_LENGTH 12
 #endif
 
-#define TIMEOUT_SERIAL 3000
+#define TIMEOUT_SERIAL  3000
+
+/* Special Update Flag : 0x8888: update by serial tool */
+#define SERIAL_FLAG     0x6613
 
 enum
 {
@@ -33,6 +36,9 @@ enum
 
     I2C_INTERFACE = 0x1,
     USB_INTERFACE = 0x2,
+
+    //chaoban test
+    BOOT_FLAG_SIZE = 0x1000,
 };
 
 #endif // SISADAPTER_H
