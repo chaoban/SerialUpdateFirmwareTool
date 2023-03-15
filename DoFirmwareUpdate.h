@@ -4,6 +4,9 @@
 #include <QTextStream>
 #include "ExitStatus.h"
 
+//#define CHAOBAN_TEST              1
+//#define _DBG_DISABLE_READCMD      1
+
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
     POWER_MODE_FWCTRL = 0x50,
@@ -13,7 +16,7 @@ enum SIS_817_POWER_MODE {
 
 enum SIS_817_POWER_MODE sis_get_fw_mode();
 
-int SISUpdateFlow();
+int SISUpdateFlow(quint8 *sis_fw_data);
 void sis_fw_softreset();
 bool sis_Switch_Cmd_Mode();
 bool sis_Switch_Work_Mode();
@@ -28,7 +31,7 @@ static bool sis_Get_Fw_Info(quint8 *, quint32 *, quint32 *, quint16 *, quint8 *,
 static bool sis_Write_Fw_Info(unsigned int, int);
 static bool sis_Write_Fw_Payload(const quint8 *, unsigned int);
 static bool sis_Update_Block(quint8 *, unsigned int, unsigned int);
-static bool sis_Update_Fw(quint8 *, bool);
+static bool sis_Update_Fw(quint8 *fn, bool update_bootloader);
 static bool sis_Get_Bootloader_Id_Crc(quint32 *, quint32 *);
 static int sis_Command_For_Write(int , unsigned char *);
 static int sis_Command_For_Read(int , unsigned char *);

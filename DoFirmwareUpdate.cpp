@@ -14,11 +14,8 @@
 #include "sis_command.h"
 #include "delay.h"
 
-//#define CHAOBAN_TEST              1
-#define _DBG_DISABLE_READCMD      1
-
 bool Chect_Read_From_FW(uint8_t *buffer);
-uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
+//uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
 extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
@@ -685,7 +682,7 @@ static bool sis_Get_Bootloader_Id_Crc(quint32 *bootloader_version, quint32 *boot
     return true;
 }
 
-int SISUpdateFlow()
+int SISUpdateFlow(quint8 *sis_fw_data)
 {
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
@@ -731,7 +728,7 @@ int SISUpdateFlow()
      * Get FW Information and Check FW Info
      * sis_get_fw_info
      */
-#if 0
+#if 1
     printf("Get FW Information\n");
     ret = sis_get_fw_info(&chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
@@ -768,7 +765,7 @@ int SISUpdateFlow()
     /*
      * Check FW Info
      */
-#if 0
+#if 1
     printf("Check FW Info\n");
     if ( (chip_id != bin_chip_id) || (tp_size != bin_tp_size) || (tp_vendor_id != bin_tp_vendor_id) || (task_id != bin_task_id) || (chip_type != bin_chip_type) ) {
         printf("fw info not match, stop update fw.");
@@ -785,7 +782,7 @@ int SISUpdateFlow()
      * Get BootFlag
      * sis_Get_Bootflag()
      */
-#if 0
+#if 1
     printf("Get BootFlag\n");
     ret = sis_Get_Bootflag(&bootflag);
     if (ret) {
@@ -801,7 +798,7 @@ int SISUpdateFlow()
      */
     //TODO
     //CHAOBAN TEST
-#if 0
+#if 1
     printf("Check BootFlag\n");
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
     printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
@@ -826,9 +823,7 @@ int SISUpdateFlow()
      * Get Bootloader ID and Bootloader CRC
      * sis_Get_Bootloader_Id_Crc
      */
-    //TODO
-    //CHAOBAN TEST
-#if 0
+#if 1
     printf("Get Bootloader ID and Bootloader CRC\n");
     ret = sis_Get_Bootloader_Id_Crc(&bootloader_version, &bootloader_crc_version);
     if (ret) {
@@ -842,7 +837,7 @@ int SISUpdateFlow()
     /*
      * Check Bootloader ID and Bootloader CRC
      */
-#if 0
+#if 1
     printf("Check Bootloader ID and Bootloader CRC\n");
 
     //bootloader id
@@ -873,42 +868,31 @@ int SISUpdateFlow()
      * Update FW
      * sis_Update_Fw
      */
-#if 0
+#if 1
     printf("START FIRMWARE UPDATE!!!\n");
-    if (update_fw_initprobe == false) {
-        update_fw_initprobe = true;
-        if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
-            || force_update == true)
-        {
-            //Special Update Flag : 0x9999: update by Driver
-            sis_fw_data[0x4000] = 0x99;
-            sis_fw_data[0x4001] = 0x99;
+    if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
+            || force_update == true) {
+        //Special Update Flag : 0x9999: update by Driver
+        sis_fw_data[0x4000] = 0x99;
+        sis_fw_data[0x4001] = 0x99;
 
-            //ret = sis_Update_Fw(FirmwareString, update_boot);
-            ret = sis_Update_Fw(sis_fw_data, update_boot);
-            printf("update_fw_initprobe %d\n", update_fw_initprobe);
+        //ret = sis_Update_Fw(FirmwareString, update_boot);
+        ret = sis_Update_Fw(sis_fw_data, update_boot);
 
-            if (ret) {
-                printf("sis update fw failed %d\n", ret);
-                return ret;
-            }
-            //firmware_id = bin_fw_version;
+        if (ret) {
+            printf("sis update fw failed %d\n", ret);
+            return ret;
         }
-        else if (bin_fw_version > 0xabff) {
-            printf("Unavilable Firmware version.\n");
-            //goto work_mode;//TODO: CHAOBAN TEST
-        }
-        else {
-            printf("Current Firmware version is same or later than bin.\n");
-            //goto work_mode;//TODO: CHAOBAN TEST
-        }
-    }
-    else
-    {
-        printf("sis driver update FW :"
-            " After AP Update .\n");
+        //firmware_id = bin_fw_version;
+     }
+     else if (bin_fw_version > 0xabff) {
+        printf("Unavilable Firmware version.\n");
         //goto work_mode;//TODO: CHAOBAN TEST
-    }
+     }
+     else {
+        printf("Current Firmware version is same or later than bin.\n");
+        //goto work_mode;//TODO: CHAOBAN TEST
+     }
 #else
     //ret = sis_Update_Fw(sis_fw_data, update_boot);
     ret = sis_Update_Fw(fn, update_boot);

@@ -10,21 +10,10 @@
 #include <QDebug>
 #include <QFile>
 #include "DoFirmwareUpdate.h"
+#include "SiSAdapter.h"
 #include "version.h"
 #include "ExitStatus.h"
 //#pragma comment(lib, "Advapi32.lib")
-
-#define TIMEOUT_TIME 3000
-
-#if 0
-#define SIS_VERIFY {0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
-#define SIS_ACK {0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
-#define SIS_VERIFY_LENGTH 11
-#else
-#define SIS_VERIFY {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
-#define SIS_ACK {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
-#define SIS_VERIFY_LENGTH 12
-#endif
 
 const QStringList getComportRegKey();
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
@@ -35,24 +24,25 @@ extern int ScanPort();
 extern int getTimestamp();
 
 unsigned char * fn; /* 讀取韌體檔案用 */
-QByteArray FirmwareString;
 QSerialPort serial; /* 開啟Serial Port用 */
+QByteArray FirmwareString;
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
+QString FwFileName = "FW.BIN";
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-    const int argumentCount = QCoreApplication::arguments().size();
-    const QStringList argumentList = QCoreApplication::arguments();
-    int exitCode = CT_EXIT_AP_FLOW_ERROR;
-    QString ComPortName;
-    QString FwFileName = "FW.BIN";
-    //FILE* input_file = 0;
-
     QTextStream standardOutput(stdout);
-    bool userassign = false;
+
+    QString ComPortName;
+    int exitCode = CT_EXIT_AP_FLOW_ERROR;
+    bool scanSerialPort = false;
+    bool serialPortAutoTest = false;
+    bool serialPortAssign = false;
+    QString filename = "fw.bin";
+    int wait_time = 0;
 
     printVersion();
 
@@ -60,6 +50,110 @@ int main(int argc, char *argv[])
     printf("Time Stamp=%08x\n", mmddHHMM);
 
     /* CHECK COMMAND ARGUMENTS */
+    //TODO: PARSE COMMAND PARAMETERS
+#if 1    
+    if (a.arguments().contains("-b")) {
+        //update_bootloader = true;
+        printf("update bootloader\n");
+    }
+    if (a.arguments().contains("-ba")) {
+        //update_bootloader_auto = true;
+        printf("update bootloader automatically\n");
+    }
+    if (a.arguments().contains("-g")) {
+        //reserve_RODATA = true;
+        printf("reserve RO data\n");
+    }
+    if (a.arguments().contains("-r")) {
+        //update_parameter = true;
+        printf("only update parameter\n");
+    }
+    if (a.arguments().contains("--force")) {
+        //force_update = true;
+        printf("force update\n");
+    }
+    if (a.arguments().contains("--jump")) {
+        //jump_check = true;
+        printf("jump parameter validation\n");
+    }
+    if (a.arguments().contains("-w=")) {
+        //wait_time = atoi(arg + 3);
+        printf("wait time set: %d\n", wait_time);
+    }
+    if (a.arguments().contains("-s")) {
+        scanSerialPort = true;
+        printf("Scan All serial ports\n");
+    }
+
+    /*
+     * -a: 自動測試並取得SIS Serial Port
+     * -c: 使用者指定Serial Port
+     *     如果使用者指定Serial Port，就不會再做自動測試
+    */
+    if (a.arguments().contains("-c")) {
+        serialPortAutoTest = false;
+        serialPortAssign = true;
+        int index = a.arguments().indexOf("-c");
+        if (index + 1 < argc) {
+            ComPortName = argv[index + 1];
+        }
+        printf("Assign the Serial port to update\n");
+    } else if (a.arguments().contains("-a")) {
+        serialPortAutoTest = true;
+        serialPortAssign = false;
+        printf("Serial ports auto test for SIS device\n");
+    }
+    if (a.arguments().contains("-f")) {
+        int index = a.arguments().indexOf("-f");
+        if (index + 1 < argc) {
+            filename = argv[index + 1];
+        }
+    }
+
+    if (scanSerialPort) 
+        ScanPort();
+    
+    if (serialPortAutoTest) 
+        exitCode = testSerialPort(&ComPortName);
+    
+    if ((serialPortAutoTest) || (serialPortAssign)) {
+        if (ComPortName.size()>4) {
+            QString tmp = "\\\\.\\";
+            tmp.append(ComPortName);
+            ComPortName = tmp;
+        }
+
+        /*
+         * OPEN SIS UART COMM PORT
+         */
+        qDebug() << "Open SiS" << ComPortName << "port";
+        serial.setPortName(ComPortName);
+
+        /*
+         * UART預設值
+         */
+        serial.setBaudRate(QSerialPort::Baud115200);
+        serial.setDataBits(QSerialPort::Data8);
+        serial.setParity(QSerialPort::NoParity);
+        serial.setStopBits(QSerialPort::OneStop);
+        serial.setFlowControl(QSerialPort::NoFlowControl);
+
+        if (!serial.open(QIODevice::ReadWrite)) {
+            standardOutput << QObject::tr("Failed to open port %1, error: %2")
+                              .arg(ComPortName, serial.errorString())
+                           << Qt::endl;
+            return CT_EXIT_NO_COMPORT;
+        }
+
+        printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
+    } 
+    
+#else
+
+    const int argumentCount = QCoreApplication::arguments().size();
+    const QStringList argumentList = QCoreApplication::arguments();
+    bool userassign = false;
+
     switch (argumentCount) {
         case 1:
             ScanPort();
@@ -81,12 +175,9 @@ int main(int argc, char *argv[])
         break;
     }
 
-    //TODO: PARSE COMMAND FORMAT
-
     /*
      * Get the Comm Port of SiS Device
      */
-
     //printf("\nSerial Port test:");
     if (!userassign) {
         exitCode = testSerialPort(&ComPortName);
@@ -94,49 +185,54 @@ int main(int argc, char *argv[])
             return exitCode;
         }
      }
-
+#endif
     /*
      * OPEN LOCAL FIRMWARE BIN FILE
      */
     //printf("Open the Firmware file: ");
+#if 1
+    quint8 *sis_fw_data;
+    long file_size;
+
+    //TODO FILENAME!!!
+    FILE* fp = fopen(filename.toStdString().c_str(), "rb");
+    if (!fp) {
+        printf("Failed to open file\n");
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    file_size = ftell(fp);
+    rewind(fp);
+
+    if ((sis_fw_data = (quint8*)malloc(sizeof(quint8) * file_size)) == NULL) {
+        printf("Failed to allocate memory\n");
+        return 1;
+    }
+
+    if (fread(sis_fw_data, sizeof(char), (size_t)file_size, fp) != (size_t)file_size) {
+        printf("Failed to read file\n");
+        return 1;
+    }
+    fclose(fp);
+
+#else
     exitCode = readBinary(FwFileName);
     if (exitCode) {
         printf("Load Firmware Bin File Fails.\n");
         exitCode = EXIT_ERR;
         return exitCode;
     }
-
-    /*
-     * OPEN SIS UART COMM PORT
-     */
-    qDebug() << "Open SiS" << ComPortName << "port";
-    serial.setPortName(ComPortName);
-
-    /*
-     * UART預設值
-     */
-    serial.setBaudRate(QSerialPort::Baud115200);
-    serial.setDataBits(QSerialPort::Data8);
-    serial.setParity(QSerialPort::NoParity);
-    serial.setStopBits(QSerialPort::OneStop);
-    serial.setFlowControl(QSerialPort::NoFlowControl);
-
-    if (!serial.open(QIODevice::ReadWrite)) {
-        standardOutput << QObject::tr("Failed to open port %1, error: %2")
-                          .arg(ComPortName, serial.errorString())
-                       << Qt::endl;
-        return CT_EXIT_NO_COMPORT;
-    }
-
-    printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
+#endif
 
     /* UPDATE FW */
-    exitCode = SISUpdateFlow();
+    exitCode = SISUpdateFlow(sis_fw_data);
 
     /* GET FW ID */
 
     printf("\nExit code : %d\n", exitCode);
 
+    free(sis_fw_data);
     if (serial.isOpen()) serial.close();
 
     return exitCode;
@@ -246,7 +342,7 @@ int testSerialPort(QString *ComPortName)
 
         HANDLE hThread;
         hThread = CreateThread(NULL, 0, RcvWaitProc, hComm, 0, NULL);
-        if ( WaitForSingleObject(hThread, TIMEOUT_TIME) == WAIT_TIMEOUT ) {
+        if ( WaitForSingleObject(hThread, TIMEOUT_SERIAL) == WAIT_TIMEOUT ) {
             printf("Warning : receiver timeout\n");
             timeOutPortCount++;
 //            CloseHandle( hComm );
