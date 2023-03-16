@@ -1,31 +1,28 @@
 ﻿#include <QCoreApplication>
-#ifdef Q_OS_WIN
-#include <Windows.h>
-#endif
-#include <iostream>
-#include <stdio.h>
 #include <QSettings>
 #include <QStringList>
 #include <QSerialPort>
 #include <QDebug>
 #include <QFile>
+#ifdef Q_OS_WIN
+#include <Windows.h>
+#endif
+#include <iostream>
+#include <stdio.h>
 #include "DoFirmwareUpdate.h"
 #include "SiSAdapter.h"
 #include "version.h"
 #include "ExitStatus.h"
 //#pragma comment(lib, "Advapi32.lib")
 
-const QStringList getComportRegKey();
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
+const QStringList getComportRegKey();
 int testSerialPort(QString *ComPortName);
 int readBinary(QString path);
 void print_sep();
 extern int ScanPort();
 extern int getTimestamp();
 
-unsigned char * fn; /* 讀取韌體檔案用 */
-QSerialPort serial; /* 開啟Serial Port用 */
-QByteArray FirmwareString;
 int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
@@ -36,13 +33,14 @@ int main(int argc, char *argv[])
     //const int argumentCount = QCoreApplication::arguments().size();
     //const QStringList argumentList = QCoreApplication::arguments();
     QTextStream standardOutput(stdout);
-
     QString ComPortName;
+    QSerialPort serial; /* 開啟Serial Port用 */
+
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
     bool scanSerialPort = false;
     bool serialPortAutoTest = false;
     bool serialPortAssign = false;
-    bool update_bootloader = false;
+    bool update_bootloader = true; /* At present, 7501 must update the bootloader at the same time */
     bool force_update = false;
     QString filename = "fw.bin";
     int wait_time = 0;
@@ -199,11 +197,15 @@ int main(int argc, char *argv[])
         return exitCode;
     }
 #endif
-
     print_sep();
 
+    //TODO
+    /* Here we can disable GR Uart Debug message */
+    
+
     /* UPDATE FW */
-    exitCode = SISUpdateFlow(sis_fw_data, 
+    qDebug() << "Start Update Firmware by" <<  serial.portName() << "port";
+    exitCode = SISUpdateFlow(&serial, sis_fw_data,
                              update_bootloader, 
                              force_update);
 
@@ -215,7 +217,13 @@ int main(int argc, char *argv[])
     if (exitCode == EXIT_SUCCESS) printf("Update Firmware Success\n");
 
     free(sis_fw_data);
-    if (serial.isOpen()) serial.close();
+
+
+    if (serial.isOpen()) {
+        //TODO
+        /* Here we can enable GR Uart Debug message */
+        serial.close();
+    }
 
     return exitCode;
     //  return a.exec();
@@ -394,6 +402,10 @@ int testSerialPort(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
+#if 0
+unsigned char * fn; /* 讀取韌體檔案用 */
+QByteArray FirmwareString;
+
 int readBinary(QString path)
 {
     char file_data;
@@ -419,6 +431,7 @@ int readBinary(QString path)
     
     return EXIT_OK;
 }
+#endif
 
 void print_sep()
 {

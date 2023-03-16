@@ -13,8 +13,8 @@
 
 #define TIMEOUT_SERIAL  3000
 
-/* Special Update Flag : 0x8888: update by serial tool */
-#define SERIAL_FLAG     0x6613
+/* Special Update Flag : Update by SerialPort */
+#define SERIAL_FLAG     0x5370 //ASCII: S P
 
 enum
 {

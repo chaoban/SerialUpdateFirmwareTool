@@ -2,6 +2,7 @@
 #define DOFIRMWAREUPDATE_H
 
 #include <QTextStream>
+#include <QSerialPort>
 #include "ExitStatus.h"
 
 //#define CHAOBAN_TEST              1
@@ -17,25 +18,22 @@ enum SIS_817_POWER_MODE {
 
 enum SIS_817_POWER_MODE sis_get_fw_mode();
 
-int SISUpdateFlow(quint8 *sis_fw_data, bool update_bootloader, bool force_update);
-void sis_fw_softreset();
-bool sis_Switch_Cmd_Mode();
-bool sis_Switch_Work_Mode();
-bool sis_Check_Fw_Ready();
-bool sis_Flash_Rom();
-bool sis_Clear_Bootflag();
-int sis_Reset_Cmd();
+int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootloader, bool force_update);
+bool sis_Switch_Cmd_Mode(QSerialPort* serial);
+bool sis_Flash_Rom(QSerialPort* serial);
+bool sis_Clear_Bootflag(QSerialPort* serial);
+int sis_Reset_Cmd(QSerialPort* serial);
 bool sis_Change_Mode(enum SIS_817_POWER_MODE);
-static int sis_Get_Bootflag(quint32 *);
-static bool sis_Get_Fw_Id(quint16 *);
-static int sis_Get_Fw_Info(quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
-static bool sis_Write_Fw_Info(unsigned int, int);
-static bool sis_Write_Fw_Payload(const quint8 *, unsigned int);
-static bool sis_Update_Block(quint8 *, unsigned int, unsigned int);
-static bool sis_Update_Fw(quint8 *fn, bool update_bootloader);
-static bool sis_Get_Bootloader_Id_Crc(quint32 *, quint32 *);
-static int sisCmdTx(int , unsigned char *);
-static int sisCmdRx(int , unsigned char *);
+static int sis_Get_Bootflag(QSerialPort* serial, quint32 *);
+static bool sis_Get_Fw_Id(QSerialPort* serial, quint16 *);
+static int sis_Get_Fw_Info(QSerialPort* serial, quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
+static bool sis_Write_Fw_Info(QSerialPort* serial, unsigned int, int);
+static bool sis_Write_Fw_Payload(QSerialPort* serial, const quint8 *, unsigned int);
+static bool sis_Update_Block(QSerialPort* serial, quint8 *, unsigned int, unsigned int);
+static bool sis_Update_Fw(QSerialPort* serial, quint8 *fn, bool update_bootloader);
+static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *, quint32 *);
+static int sisCmdTx(QSerialPort* serial, int , unsigned char *);
+static int sisCmdRx(QSerialPort* serial, int , unsigned char *);
 int verifyRxData(uint8_t *buffer);
 
 #endif // DOFIRMWAREUPDATE_H
