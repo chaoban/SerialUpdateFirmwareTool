@@ -34,7 +34,8 @@ static bool sis_Write_Fw_Payload(const quint8 *, unsigned int);
 static bool sis_Update_Block(quint8 *, unsigned int, unsigned int);
 static bool sis_Update_Fw(quint8 *fn, bool update_bootloader);
 static bool sis_Get_Bootloader_Id_Crc(quint32 *, quint32 *);
-static int sis_Command_For_Write(int , unsigned char *);
-static int sis_Command_For_Read(int , unsigned char *);
+static int sisCmdTx(int , unsigned char *);
+static int sisCmdRx(int , unsigned char *);
+int verifyRxData(uint8_t *buffer);
 
 #endif // DOFIRMWAREUPDATE_H

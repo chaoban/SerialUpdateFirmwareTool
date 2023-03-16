@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
     print_sep();
 
     printf("\nExit code : %d\n", exitCode);
+    if (exitCode == EXIT_SUCCESS) printf("Update Firmware Success\n");
 
     free(sis_fw_data);
     if (serial.isOpen()) serial.close();
