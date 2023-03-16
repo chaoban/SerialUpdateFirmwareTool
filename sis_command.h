@@ -32,8 +32,10 @@
 #define CMD_SZ_UPDATE          0x09 /* Cmd 0x83's Size */
 #define CMD_SZ_WRITE           0x3B /* Cmd 0x84's Size */
 #define CMD_SZ_XMODE           0x05 /* Cmd 0x85's Size */
-#define CMD_SZ_READ            0X09 /* Cmd 0x86's Size */
-#define CMD_SZ_BRIDGE          0X05 /* Cmd 0x01's Size */
+#define CMD_SZ_READ            0x09 /* Cmd 0x86's Size */
+#define CMD_SZ_BRIDGE          0x05 /* Cmd 0x01's Size */
+
+#define BIT_RX_READ			   13				
 
 #define READ_SIZE              52
 
@@ -55,7 +57,7 @@
 #define SIS_BOOTFLAG_P810       0x50383130
 
 //GR UART CMD ID
-#define GR_CMD_ID              0x12
+#define GR_CMD_ID               0x12
 #define GR_EVENT_ID             0x0E
 //GR OP CODE
 #define BIT_UART_ID             0
