@@ -37,11 +37,11 @@ int main(int argc, char *argv[])
     QSerialPort serial; /* 開啟Serial Port用 */
 
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
-    bool scanSerialPort = false;
-    bool serialPortAutoTest = false;
-    bool serialPortAssign = false;
+    bool bScanSeriaport = false;
+    bool bAutoDetect = false;
+    bool bAssignSerial = false;
     bool update_bootloader = true; /* At present, 7501 must update the bootloader at the same time */
-    bool force_update = false;
+    bool bForceUpdate = false;
     QString filename = "fw.bin";
     int wait_time = 0;
 
@@ -60,11 +60,11 @@ int main(int argc, char *argv[])
         printf("Argument: update bootloader\n");
     }
     if (a.arguments().contains("--force")) {
-        force_update = true;
+        bForceUpdate = true;
         printf("Argument: force update\n");
     }
     if (a.arguments().contains("-s")) {
-        scanSerialPort = true;
+        bScanSeriaport = true;
         printf("Argument: Scan All serial ports\n");
     }
 
@@ -74,16 +74,16 @@ int main(int argc, char *argv[])
      *     如果使用者指定Serial Port，就不會再做自動測試
     */
     if (a.arguments().contains("-c")) {
-        serialPortAutoTest = false;
-        serialPortAssign = true;
+        bAutoDetect = false;
+        bAssignSerial = true;
         int index = a.arguments().indexOf("-c");
         if (index + 1 < argc) {
             ComPortName = argv[index + 1];
         }
         printf("Argument: Assign the %s port to update\n", ComPortName.toStdString().c_str());
     } else if (a.arguments().contains("-a")) {
-        serialPortAutoTest = true;
-        serialPortAssign = false;
+        bAutoDetect = true;
+        bAssignSerial = false;
         printf("Argument: Auto test all serial ports that connect to SiS device\n");
     }
     if (a.arguments().contains("-f")) {
@@ -117,17 +117,17 @@ int main(int argc, char *argv[])
     print_sep();
 
     /* Scan and list all available serial ports */
-    if (scanSerialPort) 
+    if (bScanSeriaport) 
         ScanPort();
     
     /* Auto get available serial ports that connect to  SIS Device*/
-    if (serialPortAutoTest) 
+    if (bAutoDetect) 
         exitCode = testSerialPort(&ComPortName);
     
     /*
      * OPEN SIS UART COMM PORT
      */
-    if ((serialPortAutoTest) || (serialPortAssign)) {
+    if ((bAutoDetect) || (bAssignSerial)) {
         if (ComPortName.size()>4) {
             QString tmp = "\\\\.\\";
             tmp.append(ComPortName);
@@ -206,9 +206,9 @@ int main(int argc, char *argv[])
 
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port";
-    exitCode = SISUpdateFlow(&serial, sis_fw_data,
+    exitCode = sisUpdateFlow(&serial, sis_fw_data,
                              update_bootloader, 
-                             force_update);
+                             bForceUpdate);
 
     print_sep();
 

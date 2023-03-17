@@ -770,7 +770,7 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_v
     return true;
 }
 
-int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootloader, bool force_update)
+int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootloader, bool bForceUpdate)
 {
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
@@ -896,7 +896,7 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
 
     if (bootflag != SIS_BOOTFLAG_P810) {
         printf("Firmware broken, force update Firmware.\n");
-        force_update = true;
+        bForceUpdate = true;
     }
 
     //msleep(2000);
@@ -942,7 +942,7 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     //update_bootloader = true; //test for update bootloader
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
-        force_update = true;
+        bForceUpdate = true;
     }
 #else
     printf("Temporarily canceled Check Bootloader ID and Bootloader CRC\n");
@@ -957,12 +957,12 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
 
 #if 0
-    force_update = true;
+    bForceUpdate = true;
     update_bootloader = false;
 #endif
 
     if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
-            || force_update == true) { 
+            || bForceUpdate == true) { 
         //Special Update Flag : 0x6613: update by serial tool
         sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
         sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
