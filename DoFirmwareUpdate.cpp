@@ -534,29 +534,59 @@ bool sis_clear_bootflag(QSerialPort* serial)
     memset(tmpbuf, 0, 64);
 
     pack_num = ((BOOT_FLAG_SIZE + PACK_SIZE - 1) / PACK_SIZE);
-	for (retry = 0; retry < 3; retry++) {
-		//ret = sis_write_fw_info(0x0000efcc, 1, id);
+
+#ifdef _PROGRESSBAR
+    char *progress;
+    int bar_length = pack_num;
+    progress = (char *)malloc(sizeof(char) * (bar_length + 3));
+#endif
+
+    for (retry = 0; retry < 3; retry++)
+    {
         //printf("Write to addr = 0001e000 pack_num=%d \n", pack_num);
+
         ret = sis_write_fw_info(serial, 0x0001e000, pack_num);
+
 		if (ret) {
 			printf("sis Write FW info (0x83) error.\n");
 			continue;
 		}
+
 		count_84 = 0x1e000;
+
+#ifdef _PROGRESSBAR
+        for (int i = 0; i < bar_length; i++) {
+            progress[i+1] = '.'; // 用 '.' 符號初始化進度條
+        }
+        progress[0] = '['; // 進度條的開始加上方括號 '['
+        progress[bar_length+1] = ']'; // 進度條的結束加上方括號 ']'
+        progress[bar_length+2] = '\0'; // 最後一個字符為 '\0'，表示字符串結束
+        fflush(stdout); // 刷新標準輸出緩衝區
+#endif
+
 		for (i = 0; i < pack_num; i++) {
-			size_84 = (0x1f000 > (count_84 + PACK_SIZE))?
-				PACK_SIZE : (0x1f000 - count_84);
+#ifdef _PROGRESSBAR
+           progress[i+1] = '#'; // 完成一個進度，將其中一個 '.' 換成 '#'
+           printf("\r%s", progress); // 顯示進度條，方括號顏色為白色
+           fflush(stdout); // 刷新標準輸出緩衝區
+#endif
+            size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
             ret = sis_write_fw_payload(serial, tmpbuf, size_84);
+
 			if (ret)
 				break;
 			count_84 += size_84;
 		}
+
 		if (ret) {
 			printf("sis Write FW payload (0x84) error\n");
 			continue;
 		}
-		//msleep(1000);
+
+        //msleep(1000);
+
         ret = sis_Flash_Rom(serial);
+
 		if (ret) {
 			printf("sis Flash ROM (0x81) error.\n");
 			continue;
@@ -565,6 +595,11 @@ bool sis_clear_bootflag(QSerialPort* serial)
 			break;
 		}	
 	}
+
+#ifdef _PROGRESSBAR
+    printf("\n");
+    if (progress) free(progress); // 釋放進度條字符數組的內存空間
+#endif
 
 	free(tmpbuf);
 	if (ret < 0) {
@@ -586,14 +621,19 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
      * sis_write_fw_payload: Use 84 COMMAND
      * sis_Flash_Rom
     */
+
     count_83 = addr;
-    while (count_83 < end) {
+    while (count_83 < end)
+    {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
 #if 0        
         printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
 #endif
+        /* pack_num = 79, 158, or 237 */
         pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);
-        for (block_retry = 0; block_retry < 3; block_retry++) {
+
+        for (block_retry = 0; block_retry < 3; block_retry++)
+        {
             //printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
 
             ret = sis_write_fw_info(serial, count_83, pack_num);
@@ -602,10 +642,12 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
                 printf("sis Write FW info (0x83) error.\n");
                 continue;
             }
+
             count_84 = count_83;
             for (i = 0; i < pack_num; i++) {
-                size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE)? 
-                    PACK_SIZE : (count_83 + size_83 - count_84);
+
+
+                size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
                 printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
 #endif
@@ -614,6 +656,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
                     break;
                 count_84 += size_84;
             }
+
             if (ret) {
                 printf("sis Write FW payload (0x84) error.\n");
                 continue;
@@ -639,7 +682,6 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
             //printf("sis count_83 == count_84.\n");
         }
     }
-
     return EXIT_OK;
 }
 

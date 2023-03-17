@@ -8,6 +8,7 @@
 //#define _CHAOBAN_TEST               1
 #define _DBG_DISABLE_READCMD        1
 #define _DBG_DISABLE_CHECKFW        1
+#define _PROGRESSBAR                1
 
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
