@@ -5,7 +5,7 @@
 #include <QDebug>
 #include <QFile>
 #ifdef Q_OS_WIN
-#include <Windows.h>
+#include <windows.h>
 #endif
 #include <iostream>
 #include <stdio.h>
@@ -20,7 +20,7 @@ const QStringList getComportRegKey();
 int testSerialPort(QString *ComPortName);
 int readBinary(QString path);
 extern void print_sep();
-extern int ScanPort();
+extern int scanSerialport();
 extern int getTimestamp();
 
 int occupiedPortCount = 0;
@@ -33,6 +33,10 @@ int main(int argc, char *argv[])
     //const int argumentCount = QCoreApplication::arguments().size();
     //const QStringList argumentList = QCoreApplication::arguments();
     QTextStream standardOutput(stdout);
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+
     QString ComPortName;
     QSerialPort serial; /* 開啟Serial Port用 */
 
@@ -40,7 +44,7 @@ int main(int argc, char *argv[])
     bool bScanSeriaport = false;
     bool bAutoDetect = false;
     bool bAssignSerial = false;
-    bool update_bootloader = true; /* At present, 7501 must update the bootloader at the same time */
+    bool bUpdateBootloader = true; /* At present, 7501 must update the bootloader at the same time */
     bool bForceUpdate = false;
     QString filename = "fw.bin";
     int wait_time = 0;
@@ -56,7 +60,7 @@ int main(int argc, char *argv[])
      * PARSE AND GET COMMAND ARGUMENTS 
      */
     if (a.arguments().contains("-b")) {
-        update_bootloader = true;
+        bUpdateBootloader = true;
         printf("Argument: update bootloader\n");
     }
     if (a.arguments().contains("--force")) {
@@ -94,7 +98,7 @@ int main(int argc, char *argv[])
         printf("Argument: firmware file name: %s\n", filename.toStdString().c_str());
     }
     if (a.arguments().contains("-ba")) {
-        //update_bootloader_auto = true;    //TODO
+        //bUpdateBootloader_auto = true;    //TODO
         printf("Argument: update bootloader automatically\n");
     }
     if (a.arguments().contains("-g")) {
@@ -118,7 +122,7 @@ int main(int argc, char *argv[])
 
     /* Scan and list all available serial ports */
     if (bScanSeriaport) 
-        ScanPort();
+        scanSerialport();
     
     /* Auto get available serial ports that connect to  SIS Device*/
     if (bAutoDetect) 
@@ -207,13 +211,21 @@ int main(int argc, char *argv[])
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port";
     exitCode = sisUpdateFlow(&serial, sis_fw_data,
-                             update_bootloader, 
+                             bUpdateBootloader, 
                              bForceUpdate);
 
     print_sep();
 
     printf("\nExit code : %d\n", exitCode);
-    if (exitCode == EXIT_SUCCESS) printf("Update Firmware Success\n");
+    if (exitCode == EXIT_SUCCESS) {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+        printf("Update Firmware Success\n");
+    } else {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        printf("Update Firmware Failed\n");
+    }
+
+    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
     free(sis_fw_data);
 

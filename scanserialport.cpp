@@ -51,9 +51,9 @@
 #include <QSerialPortInfo>
 #include <QTextStream>
 
-int ScanPort();
+int scanSerialport();
 
-int ScanPort()
+int scanSerialport()
 {
 //    QCoreApplication coreApplication(argc, argv);
     QTextStream out(stdout);

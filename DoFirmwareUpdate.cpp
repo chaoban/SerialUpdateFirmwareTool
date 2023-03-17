@@ -10,6 +10,9 @@
 **********************************************/
 #include <QSerialPort>
 #include <QDebug>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 #include "delay.h"
 #include "DoFirmwareUpdate.h"
 #include "sis_command.h"
@@ -640,13 +643,13 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
     return EXIT_OK;
 }
 
-static bool sis_Update_Fw(QSerialPort* serial, quint8 *fn, bool update_bootloader)
+static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 {
     int ret = 0;
 
 //FOR VERIFY FIRMWARE DATA
 #if 0
-    printf("Enter sis_Update_Fw(), Header char: %x\n", fn[0]);
+    printf("Enter burningCode(), Header char: %x\n", fn[0]);
 #endif
 
     /* (1) Clear Boot Flag
@@ -696,9 +699,9 @@ static bool sis_Update_Fw(QSerialPort* serial, quint8 *fn, bool update_bootloade
 
     /* (5) Update bootloader code (if need update_booloader)
      *     ADDRESS: 0x0, Length=0x4000
-     *     (Notes: if need update_bootloader)
+     *     (Notes: if need update bootloader)
      */
-    if (update_bootloader) {
+    if ( bUpdateBootloader ) {
         printf("Update Boot loader ...\n");
         ret = sis_Update_Block(serial, fn, 0x00000000, 0x00004000);
 	    if (ret) {
@@ -770,8 +773,12 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_v
     return true;
 }
 
-int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootloader, bool bForceUpdate)
+int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bForceUpdate)
 {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
     quint32 tp_size = 0x00000000;
@@ -934,12 +941,12 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     printf("    sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
 
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
-        update_bootloader = true;
-        printf("Bootloader changed. turn on the update_bootloader flag\n");
+        bUpdateBootloader = true;
+        printf("Bootloader changed. turn on the bUpdateBootloader flag\n");
     }
 
     //bin_fw_version = 0xab00; //test for update fw
-    //update_bootloader = true; //test for update bootloader
+    //bUpdateBootloader = true; //test for update bootloader
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
         bForceUpdate = true;
@@ -951,14 +958,17 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
 
     /*
      * Update FW
-     * sis_Update_Fw
+     * burningCode
      */
+    SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
 
     printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
 
+    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+
 #if 0
     bForceUpdate = true;
-    update_bootloader = false;
+    bUpdateBootloader = false;
 #endif
 
     if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
@@ -967,7 +977,7 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
         sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
         sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
 
-        ret = sis_Update_Fw(serial, sis_fw_data, update_bootloader);
+        ret = burningCode(serial, sis_fw_data, bUpdateBootloader);
 
         if (ret) {
             printf("sis update fw failed %d\n", ret);
