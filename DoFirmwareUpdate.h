@@ -5,7 +5,7 @@
 #include <QSerialPort>
 #include "ExitStatus.h"
 
-//#define CHAOBAN_TEST              1
+//#define _CHAOBAN_TEST               1
 #define _DBG_DISABLE_READCMD        1
 #define _DBG_DISABLE_CHECKFW        1
 

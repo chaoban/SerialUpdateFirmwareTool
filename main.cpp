@@ -19,7 +19,7 @@ DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
 int testSerialPort(QString *ComPortName);
 int readBinary(QString path);
-void print_sep();
+extern void print_sep();
 extern int ScanPort();
 extern int getTimestamp();
 
@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
         scanSerialPort = true;
         printf("Argument: Scan All serial ports\n");
     }
+
     /*
      * -a: 自動測試並取得連接SIS Device的Serial Port
      * -c: 使用者指定Serial Port
@@ -203,13 +204,11 @@ int main(int argc, char *argv[])
     /* Here we can disable GR Uart Debug message */
     
 
-    /* UPDATE FW */
-    qDebug() << "Start Update Firmware by" <<  serial.portName() << "port";
+    /* UPDATE Firmware */
+    qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port";
     exitCode = SISUpdateFlow(&serial, sis_fw_data,
                              update_bootloader, 
                              force_update);
-
-    /* GET FW ID */
 
     print_sep();
 
@@ -217,7 +216,6 @@ int main(int argc, char *argv[])
     if (exitCode == EXIT_SUCCESS) printf("Update Firmware Success\n");
 
     free(sis_fw_data);
-
 
     if (serial.isOpen()) {
         //TODO
@@ -432,8 +430,3 @@ int readBinary(QString path)
     return EXIT_OK;
 }
 #endif
-
-void print_sep()
-{
-    printf( "-----\n" );
-}

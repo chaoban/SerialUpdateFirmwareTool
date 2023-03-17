@@ -5,6 +5,7 @@
 
 static inline unsigned char BCD (unsigned char x);
 int getTimestamp();
+void print_sep();
 
 static inline unsigned char BCD (unsigned char x)
 {
@@ -35,4 +36,9 @@ int getTimestamp()
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_min ));
 
     return mmddHHMM;
+}
+
+void print_sep()
+{
+    printf( "-----\n" );
 }

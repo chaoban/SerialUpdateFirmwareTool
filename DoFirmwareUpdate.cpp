@@ -15,14 +15,10 @@
 #include "sis_command.h"
 
 int verifyRxData(uint8_t *buffer);
-//uint8_t sis_fw_data[] = { /*TODO: BINARY FILE*/ };
 extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 extern void print_sep();
-extern unsigned char * fn; /* 讀取韌體檔案用 */
-//extern QSerialPort serial;
-extern QByteArray FirmwareString;
 
 /*
  * Serial Write Commands
@@ -32,12 +28,6 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
     int ret = EXIT_OK;
-
-#ifdef CHAOBAN_TEST   //FOR DEBUG
-    for (int i=0; i < wlength; i++) {
-        printf("wdata[%i] = %x\n", i, wdata[i]);
-    }
-#endif
 
     appendData = QByteArray::fromRawData((char*)wdata, wlength);
     //appendData = QByteArray((char*)wdata, wlength);
@@ -52,14 +42,8 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 
     writeData.append(appendData);
 
-#ifdef CHAOBAN_TEST
-    for (int i =0; i < writeData.length(); i++) {
-        qDebug() << writeData[i] << " ";
-    }
-#endif
-
-#ifdef CHAOBAN_TEST
-    qDebug() << "Write:" << writeData.toHex();
+#ifdef _CHAOBAN_TEST
+    qDebug() << "sisCmdTx:" << writeData.toHex();
 #endif
 
     const qint32 bytesWritten = serial->write(writeData);
@@ -79,9 +63,8 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
         ret = SIS_ERR;
     }
 
-#ifdef CHAOBAN_TEST
-    qDebug() << "bytesWritten=" << bytesWritten;
-#endif
+    //qDebug() << "bytesWritten=" << bytesWritten;
+
     return ret;
 }
 
@@ -104,8 +87,9 @@ static int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 
         rdata = (unsigned char *)rbuffer.data();
         rlength = rbuffer.size();
-#ifdef CHAOBAN_TEST
-        qDebug() << "Read:" << rbuffer;
+
+#ifdef _CHAOBAN_TEST
+        qDebug() << "sisCmdRx:" << rbuffer.toHex();
         printf("rdata:");
         for (int i=0; i < rlength; i++) {
             printf("%x ",rdata[i]);
@@ -453,7 +437,6 @@ static bool sis_write_fw_payload(QSerialPort* serial, const quint8 *val, unsigne
     quint8 len = BIT_PALD + count;
     quint8 *sis817_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
 
-
     if (!sis817_cmd_84) {
         printf("sis alloc buffer error\n");
         return -1;
@@ -654,7 +637,6 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
         }
     }
 
-    print_sep();
     return EXIT_OK;
 }
 
@@ -662,62 +644,53 @@ static bool sis_Update_Fw(QSerialPort* serial, quint8 *fn, bool update_bootloade
 {
     int ret = 0;
 
-//FOR DEBUG FIRMWARE DATA
+//FOR VERIFY FIRMWARE DATA
 #if 0
-    printf("Enter sis_Update_Fw()\n");
-    qDebug() << fn[0];
-    qDebug() << fn[1];
-    qDebug() << fn[2];
-    qDebug() << fn[3];
+    printf("Enter sis_Update_Fw(), Header char: %x\n", fn[0]);
 #endif
 
-    /* (1) Clear boot flag
+    /* (1) Clear Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
-     *     Clear boot-flag to "0"
+     *     Clear boot-flag to zero
      */
-    printf("Clear boot flag\n");
+    printf("Clear Boot flag ...\n");
     ret = sis_clear_bootflag(serial);
     if (ret) {
-        printf("sis Update fw fail at Clear boot flag.");
-	    //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at Clear Boot Flag\n");
+        return EXIT_FAIL;
     }
 
-
-    /* (2) Update main code 1
+    /* (2) Update Main Code Section 1
      *     ADDRESS: 0x4000, Length=0x1A000
      */
-    printf("Update main code 1\n");
-    ret = sis_Update_Block(serial, fn, 0x00004000, 0x0001A000);
+    printf("Update Main Code Section 1 ...\n");
+    ret = sis_Update_Block(serial, fn, 0x00007000, 0x00016000);
     if (ret) {
-        printf("sis Update fw fail at main code 1.");
-	    //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at Main Code Section 1\n");
+        return EXIT_FAIL;
     }
 
-    /* (3) Update main code 2
+    /* (3) Update Main Code Section 2
      *     ADDRESS: 0x6000, Length=0x1000
      */
-#if 0
-    printf("Update main code 2\n");
+#if 1
+    printf("Update Main Code Section 2 ...\n");
     ret = sis_Update_Block(serial, fn, 0x00006000, 0x00001000);
     if (ret) {
-        printf("sis Update fw fail at main code 2.");
-	    //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at Main Code Section 2\n");
+        return EXIT_FAIL;
     }
 #endif
 
     /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc
      *     ADDRESS: 0x4000, Length=0x2000
      */
-#if 0
-    printf("Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc\n");
+#if 1
+    printf("Update firmware info, regmem, defmem, THQAmem, hidDevDesc and hidRptDesc ...\n");
     ret = sis_Update_Block(serial, fn, 0x00004000, 0x00002000);
     if (ret) {
-        printf("sis Update fw fail at fwinfo.");
-	    //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at info, regmem ...\n");
+        return EXIT_FAIL;
     }
 #endif
 
@@ -725,39 +698,38 @@ static bool sis_Update_Fw(QSerialPort* serial, quint8 *fn, bool update_bootloade
      *     ADDRESS: 0x0, Length=0x4000
      *     (Notes: if need update_bootloader)
      */
-    printf("Update bootloader\n");
     if (update_bootloader) {
+        printf("Update Boot loader ...\n");
         ret = sis_Update_Block(serial, fn, 0x00000000, 0x00004000);
 	    if (ret) {
-            printf("sis Update fw fail at boot code.");
-		    //TODO:
-            //goto release_firmware;
+            printf("SiS update firmware fail at Boot loader\n");
+            return EXIT_FAIL;
 	    }
     }
 
     /* (6) Update rodata
      *     ADDRESS: 0x1d000, Length=0x2000
      */
-#if 0
-    printf("Update rodata\n");
+#if 1
+    printf("Update Rodata and Boot Flag ...\n");
     ret = sis_Update_Block(serial, fn, 0x0001d000, 0x00002000);
     if (ret) {
-        printf("sis Update fw fail at rodata.");
-	    //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at Rodata and Boot Flag\n");
+        return EXIT_FAIL;
     }
 #endif
 
+#if 0
     /* (7) Burn Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
      */
-    printf("Burn Boot Flag\n");
+    printf("Burn Boot Flag ...\n");
     ret = sis_Update_Block(serial, fn, 0x0001e000, 0x00001000);
     if (ret) {
-        printf("sis Update fw fail at Burn Boot Flag.");
-        //TODO:
-        //goto release_firmware;
+        printf("SiS update firmware fail at Boot Flag\n");
+        return EXIT_FAIL;
     }
+#endif
 
     return EXIT_OK;
 }
@@ -850,25 +822,25 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     //TODO: 確認這些ADDRESS5正確否
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
-    printf("sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
+    printf("    sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
 
     //tp vendor id
     bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
-    printf("sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
+    printf("    sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
 
     //task id
     bin_task_id = (sis_fw_data[0x400a] << 8) | (sis_fw_data[0x400b]);
-    printf("sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
+    printf("    sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
 
     //0x400c reserved
 
     //chip type
     bin_chip_type = sis_fw_data[0x400d];
-    printf("sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
+    printf("    sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
 
     //fw version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
-    printf("sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
+    printf("    sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
 
     print_sep();
 
@@ -897,29 +869,29 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     printf("Get BootFlag\n");
     ret = sis_Get_Bootflag(serial, &bootflag);
     if (ret) {
-        printf("sis get bootflag failed: %d\n", ret);
+        printf("sis get bootflag failed, Error code: %d\n", ret);
     }
 #else
     printf("Temporarily canceled get bootflag\n");
 #endif
-    print_sep();
+
+    bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
+    printf("    sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
 
     /*
      * Check BootFlag
      * Boot flag: 0x1eff0-0x1eff3
      * Value: 0x50 0x38 0x31 0x30
      */
+//#ifndef _DBG_DISABLE_CHECKFW
+#if 1
     printf("Check BootFlag\n");
-    bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
-    printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
-
-#ifndef _DBG_DISABLE_CHECKFW
     if (bin_bootflag != SIS_BOOTFLAG_P810) {
         printf("Firmware Binary file broken, stop update process!!\n");
         return EXIT_FAIL;
     }
 #else
-    printf("Temporarily canceled Check BootFlag\n");
+    printf("Temporarily canceled Check BootFlag of Binary file\n");
 #endif
 
     if (bootflag != SIS_BOOTFLAG_P810) {
@@ -940,7 +912,7 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
     printf("Get Bootloader ID and Bootloader CRC\n");
     ret = sis_Get_Bootloader_Id_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (ret) {
-        printf("sis get bootloader id or crc failed %d\n", ret);
+        printf("SiS get bootloader ID or CRC fail. Error code: %d\n", ret);
     }
 #else
     printf("Temporarily canceled Get Bootloader ID and Bootloader CRC\n");
@@ -955,15 +927,15 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
 
     //bootloader id
     bin_bootloader_version = (sis_fw_data[0x230] << 24) | (sis_fw_data[0x231] << 16) | (sis_fw_data[0x232] << 8) | (sis_fw_data[0x233]);
-    printf("sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
+    printf("    sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
 
     //bootloader crc
     bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
-    printf("sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
+    printf("    sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
 
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
         update_bootloader = true;
-        printf("bootloader changed. update_bootloader flag on.\n");
+        printf("Bootloader changed. turn on the update_bootloader flag\n");
     }
 
     //bin_fw_version = 0xab00; //test for update fw
@@ -982,9 +954,9 @@ int SISUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool update_bootload
      * sis_Update_Fw
      */
 
-    printf("START FIRMWARE UPDATE!!!\n");
+    printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
 
-#ifdef _DBG_DISABLE_CHECKFW
+#if 0
     force_update = true;
     update_bootloader = false;
 #endif
