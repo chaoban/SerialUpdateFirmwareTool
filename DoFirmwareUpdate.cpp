@@ -535,12 +535,6 @@ bool sis_clear_bootflag(QSerialPort* serial)
 
     pack_num = ((BOOT_FLAG_SIZE + PACK_SIZE - 1) / PACK_SIZE);
 
-#ifdef _PROGRESSBAR
-    char *progress;
-    int bar_length = pack_num;
-    progress = (char *)malloc(sizeof(char) * (bar_length + 3));
-#endif
-
     for (retry = 0; retry < 3; retry++)
     {
         //printf("Write to addr = 0001e000 pack_num=%d \n", pack_num);
@@ -552,32 +546,22 @@ bool sis_clear_bootflag(QSerialPort* serial)
 			continue;
 		}
 
-		count_84 = 0x1e000;
+        count_84 = 0x1e000;
 
-#ifdef _PROGRESSBAR
-        for (int i = 0; i < bar_length; i++) {
-            progress[i+1] = '.'; // 用 '.' 符號初始化進度條
-        }
-        progress[0] = '['; // 進度條的開始加上方括號 '['
-        progress[bar_length+1] = ']'; // 進度條的結束加上方括號 ']'
-        progress[bar_length+2] = '\0'; // 最後一個字符為 '\0'，表示字符串結束
-        fflush(stdout); // 刷新標準輸出緩衝區
-#endif
-
-		for (i = 0; i < pack_num; i++) {
-#ifdef _PROGRESSBAR
-           progress[i+1] = '#'; // 完成一個進度，將其中一個 '.' 換成 '#'
-           printf("\r%s", progress); // 顯示進度條，方括號顏色為白色
-           fflush(stdout); // 刷新標準輸出緩衝區
+        for (i = 0; i < pack_num; i++) {
+#ifdef _PROCESSBAR
+            progress_bar(pack_num, i + 1, 20);
 #endif
             size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
             ret = sis_write_fw_payload(serial, tmpbuf, size_84);
 
-			if (ret)
-				break;
-			count_84 += size_84;
-		}
-
+            if (ret)
+                break;
+            count_84 += size_84;
+        }
+#ifdef _PROCESSBAR
+        printf("\n");
+#endif
 		if (ret) {
 			printf("sis Write FW payload (0x84) error\n");
 			continue;
@@ -595,11 +579,6 @@ bool sis_clear_bootflag(QSerialPort* serial)
 			break;
 		}	
 	}
-
-#ifdef _PROGRESSBAR
-    printf("\n");
-    if (progress) free(progress); // 釋放進度條字符數組的內存空間
-#endif
 
 	free(tmpbuf);
 	if (ret < 0) {
@@ -621,7 +600,10 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
      * sis_write_fw_payload: Use 84 COMMAND
      * sis_Flash_Rom
     */
-
+#ifdef _PROCESSBAR
+    int total_pack = (count / _4K) * ((_4K + PACK_SIZE - 1) / PACK_SIZE);
+    int pack_base = 0;
+#endif
     count_83 = addr;
     while (count_83 < end)
     {
@@ -644,9 +626,13 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
             }
 
             count_84 = count_83;
+
             for (i = 0; i < pack_num; i++) {
-
-
+#ifdef _PROCESSBAR
+                // 這邊每次做的都是一個RAM_SIZE的大小的寫入
+                // 例如12K，每筆52Bytes，共需要237次(pack_num)
+                progress_bar(total_pack, pack_base + i + 1, 20);
+#endif
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
                 printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
@@ -677,11 +663,18 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
             printf("Retry timeout\n");
             return -1;
         }
+
         count_83 += size_83;
+#ifdef _PROCESSBAR
+        pack_base += pack_num;
+#endif
         if (count_83 == count_84) {
             //printf("sis count_83 == count_84.\n");
         }
     }
+#ifdef _PROCESSBAR
+    printf("\n");
+#endif
     return EXIT_OK;
 }
 
@@ -731,7 +724,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      *     ADDRESS: 0x4000, Length=0x2000
      */
 #if 1
-    printf("Update firmware info, regmem, defmem, THQAmem, hidDevDesc and hidRptDesc ...\n");
+    printf("Update firmware info ...\n");
     ret = sis_Update_Block(serial, fn, 0x00004000, 0x00002000);
     if (ret) {
         printf("SiS update firmware fail at info, regmem ...\n");
@@ -776,6 +769,17 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     }
 #endif
 
+// FOR TEST AND VERIFY
+#if 0
+    printf("FOR TEST AND VERIFY ...\n");
+    ret = sis_Update_Block(serial, fn, 0x00000000, 0x0001F000);
+    if (ret) {
+        printf("Chaoban TEST AND VERIFY in burningCode()\n");
+        return EXIT_FAIL;
+    }
+
+#endif
+
     return EXIT_OK;
 }
 
@@ -817,7 +821,7 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_v
 
 int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bForceUpdate)
 {
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
     GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
 
@@ -1003,9 +1007,7 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
      * burningCode
      */
     SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-
     printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
-
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
 #if 0
@@ -1067,4 +1069,33 @@ int verifyRxData(uint8_t *buffer)
 
     return ret;
 }
+
+#ifdef _PROCESSBAR
+void progress_bar(int total, int current, int width) {
+
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo); // 獲取標準輸出設備的屬性
+    int i;
+    float percent;
+    int filled_width;
+
+    // 計算進度條填充的寬度和百分比
+    percent = (float)current / (float)total;
+    filled_width = (int)(percent * width);
+
+    // 打印進度條
+    SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+    printf("[");
+    for (i = 0; i < filled_width; i++) {
+        printf("=");
+    }
+    for (i = filled_width; i < width; i++) {
+        printf(" ");
+    }
+    printf("] %.2f%%\r", percent*100);
+    fflush(stdout);
+    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+}
+#endif
 

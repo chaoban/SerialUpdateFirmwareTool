@@ -8,7 +8,7 @@
 //#define _CHAOBAN_TEST               1
 #define _DBG_DISABLE_READCMD        1
 #define _DBG_DISABLE_CHECKFW        1
-#define _PROGRESSBAR                1
+#define _PROCESSBAR                  1
 
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
@@ -36,5 +36,8 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *, quint32 *)
 static int sisCmdTx(QSerialPort* serial, int , unsigned char *);
 static int sisCmdRx(QSerialPort* serial, int , unsigned char *);
 int verifyRxData(uint8_t *buffer);
+#ifdef _PROCESSBAR
+void progress_bar(int total, int current, int width);
+#endif
 
 #endif // DOFIRMWAREUPDATE_H
