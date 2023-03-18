@@ -16,13 +16,12 @@
 #include "delay.h"
 #include "DoFirmwareUpdate.h"
 #include "sis_command.h"
+#include "SiSAdapter.h"
 
-int verifyRxData(uint8_t *buffer);
 extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 extern void print_sep();
-
 /*
  * Serial Write Commands
  */
@@ -31,7 +30,6 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
     int ret = EXIT_OK;
-
     appendData = QByteArray::fromRawData((char*)wdata, wlength);
     //appendData = QByteArray((char*)wdata, wlength);
     //appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
@@ -42,7 +40,6 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     writeData[BIT_OP_MSB] = GR_OP;
     writeData[BIT_SIZE_LSB] = (wlength & 0xff);
     writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
-
     writeData.append(appendData);
 
 #ifdef _CHAOBAN_TEST
@@ -65,7 +62,6 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
         ret = SIS_ERR;
     }
-
     //qDebug() << "bytesWritten=" << bytesWritten;
 
     return ret;
@@ -77,7 +73,6 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 static int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_OK;
-
     //const QByteArray rbuffer = serial->readAll();
 
     if(!serial->waitForReadyRead(-1)) { //block until new data arrives
@@ -100,7 +95,6 @@ static int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
         printf("\n");
 #endif
     }
-
     return ret;
 }
 
@@ -146,7 +140,6 @@ bool sis_Switch_Cmd_Mode(QSerialPort* serial)
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
     }
-
     //printf("SiS Send Switch CMD: ");
     int result = verifyRxData(tmpbuf);
     //if (result == true) printf("Success\n");
@@ -159,14 +152,12 @@ bool sis_Switch_Cmd_Mode(QSerialPort* serial)
     msleep(100);
 
     memset(tmpbuf, 0, sizeof(tmpbuf));
-
     //Send 85 CMD - ENABLE_DIAGNOSIS_MODE
     ret = sisCmdTx(serial, sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
     if (ret < 0) {
         qDebug() << "SiS SEND Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
     }
-
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
     ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
@@ -209,7 +200,6 @@ bool sis_Change_Mode(enum SIS_817_POWER_MODE mode)
         default:
             break;
     }
-
     return EXIT_OK;
 }
 
@@ -306,8 +296,6 @@ static int sis_get_fw_info(QSerialPort* serial, quint8 *chip_id, quint32 *tp_siz
     int rlength = READ_SIZE;
     uint8_t R_SIZE_LSB = rlength & 0xff;
     uint8_t R_SIZE_MSB = (rlength >> 8) & 0xff;
-
-    uint64_t addr = ADDR_FW_INFO;//A0004000
 
     uint8_t sis_cmd_get_FW_INFO[CMD_SZ_READ] = {SIS_REPORTID, 0x00,/*CRC*/CMD_SISREAD,
                                                (ADDR_FW_INFO & 0xff),
@@ -535,10 +523,16 @@ bool sis_clear_bootflag(QSerialPort* serial)
 
     pack_num = ((BOOT_FLAG_SIZE + PACK_SIZE - 1) / PACK_SIZE);
 
+#ifdef _PROCESSBAR
+    /* 根據運算資料量設定進度欄的寬度
+     * EX. 每4K設定5個字元寬
+     */
+    int progresWidth = (pack_num / _4K_ALIGN_52B) * 2;
+#endif
+
     for (retry = 0; retry < 3; retry++)
     {
         //printf("Write to addr = 0001e000 pack_num=%d \n", pack_num);
-
         ret = sis_write_fw_info(serial, 0x0001e000, pack_num);
 
 		if (ret) {
@@ -550,7 +544,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
 
         for (i = 0; i < pack_num; i++) {
 #ifdef _PROCESSBAR
-            progress_bar(pack_num, i + 1, 20);
+            progresBar(pack_num, i + 1, progresWidth); // 列印進度條
 #endif
             size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
             ret = sis_write_fw_payload(serial, tmpbuf, size_84);
@@ -560,7 +554,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
             count_84 += size_84;
         }
 #ifdef _PROCESSBAR
-        printf("\n");
+        printf("\n"); // 進度條完成後換行用
 #endif
 		if (ret) {
 			printf("sis Write FW payload (0x84) error\n");
@@ -603,6 +597,10 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
 #ifdef _PROCESSBAR
     int total_pack = (count / _4K) * ((_4K + PACK_SIZE - 1) / PACK_SIZE);
     int pack_base = 0;
+    /* 根據運算資料量設定進度欄的寬度
+     * EX. 每4K設定2個字元寬
+     */
+    int progresWidth = (total_pack / _4K_ALIGN_52B) * 2;
 #endif
     count_83 = addr;
     while (count_83 < end)
@@ -631,7 +629,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
 #ifdef _PROCESSBAR
                 // 這邊每次做的都是一個RAM_SIZE的大小的寫入
                 // 例如12K，每筆52Bytes，共需要237次(pack_num)
-                progress_bar(total_pack, pack_base + i + 1, 20);
+                progresBar(total_pack, pack_base + i + 1, progresWidth); /* 列印進度條 */
 #endif
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
@@ -673,7 +671,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
         }
     }
 #ifdef _PROCESSBAR
-    printf("\n");
+    printf("\n"); // 進度條後完成後跳下一行
 #endif
     return EXIT_OK;
 }
@@ -757,10 +755,10 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     }
 #endif
 
-#if 0
     /* (7) Burn Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
      */
+#if 0
     printf("Burn Boot Flag ...\n");
     ret = sis_Update_Block(serial, fn, 0x0001e000, 0x00001000);
     if (ret) {
@@ -769,7 +767,9 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     }
 #endif
 
-// FOR TEST AND VERIFY
+    /*
+     * FOR TEST AND VERIFY
+     */
 #if 0
     printf("FOR TEST AND VERIFY ...\n");
     ret = sis_Update_Block(serial, fn, 0x00000000, 0x0001F000);
@@ -777,7 +777,6 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
         printf("Chaoban TEST AND VERIFY in burningCode()\n");
         return EXIT_FAIL;
     }
-
 #endif
 
     return EXIT_OK;
@@ -842,7 +841,6 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
     quint32 bin_bootloader_crc_version = 0x00000000;
     quint32 bootflag = 0x00000000;
     quint32 bin_bootflag = 0x00000000;
-
     int ret = -1;
 
     /*
@@ -857,7 +855,6 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
 #else
     printf("Temporarily canceled Switch FW Mode\n");
 #endif
-
     /*
      * Get FW Information and Check FW Info
      * sis_get_fw_info
@@ -875,25 +872,25 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
     //TODO: 確認這些ADDRESS5正確否
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
-    printf("    sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
+    printf("  sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
 
     //tp vendor id
     bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
-    printf("    sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
+    printf("  sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
 
     //task id
     bin_task_id = (sis_fw_data[0x400a] << 8) | (sis_fw_data[0x400b]);
-    printf("    sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
+    printf("  sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
 
     //0x400c reserved
 
     //chip type
     bin_chip_type = sis_fw_data[0x400d];
-    printf("    sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
+    printf("  sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
 
     //fw version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
-    printf("    sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
+    printf("  sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
 
     print_sep();
 
@@ -906,7 +903,6 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
         printf("Firmware info not match, stop update process!!");
         return EXIT_FAIL;
     }
-   
     //msleep(2000);
     msleep(1000); //chaoban test
 #else
@@ -929,7 +925,7 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
 #endif
 
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
-    printf("    sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
+    printf("sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
 
     /*
      * Check BootFlag
@@ -980,11 +976,11 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
 
     //bootloader id
     bin_bootloader_version = (sis_fw_data[0x230] << 24) | (sis_fw_data[0x231] << 16) | (sis_fw_data[0x232] << 8) | (sis_fw_data[0x233]);
-    printf("    sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
+    printf("  sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
 
     //bootloader crc
     bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
-    printf("    sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
+    printf("  sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
 
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
         bUpdateBootloader = true;
@@ -1069,33 +1065,3 @@ int verifyRxData(uint8_t *buffer)
 
     return ret;
 }
-
-#ifdef _PROCESSBAR
-void progress_bar(int total, int current, int width) {
-
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    GetConsoleScreenBufferInfo(hConsole, &consoleInfo); // 獲取標準輸出設備的屬性
-    int i;
-    float percent;
-    int filled_width;
-
-    // 計算進度條填充的寬度和百分比
-    percent = (float)current / (float)total;
-    filled_width = (int)(percent * width);
-
-    // 打印進度條
-    SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
-    printf("[");
-    for (i = 0; i < filled_width; i++) {
-        printf("=");
-    }
-    for (i = filled_width; i < width; i++) {
-        printf(" ");
-    }
-    printf("] %.2f%%\r", percent*100);
-    fflush(stdout);
-    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-}
-#endif
-

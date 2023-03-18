@@ -18,7 +18,7 @@ enum SIS_817_POWER_MODE {
 };
 
 enum SIS_817_POWER_MODE sis_get_fw_mode();
-
+int verifyRxData(uint8_t *buffer);
 int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bForceUpdate);
 bool sis_Switch_Cmd_Mode(QSerialPort* serial);
 bool sis_Flash_Rom(QSerialPort* serial);
@@ -36,8 +36,5 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *, quint32 *)
 static int sisCmdTx(QSerialPort* serial, int , unsigned char *);
 static int sisCmdRx(QSerialPort* serial, int , unsigned char *);
 int verifyRxData(uint8_t *buffer);
-#ifdef _PROCESSBAR
-void progress_bar(int total, int current, int width);
-#endif
 
 #endif // DOFIRMWAREUPDATE_H

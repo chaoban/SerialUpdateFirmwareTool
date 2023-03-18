@@ -22,7 +22,6 @@ void sis_Make_83_Buffer( quint8 *buf, unsigned int addr, int pack_num )
     *(buf + BIT_CRC) = sis_Calculate_Output_Crc( buf, len );
 }
 
-//TODO: CHAOBAN TEST: NEED TO CHECK
 void sis_Make_84_Buffer( quint8 *buf, const quint8 *val, int count )
 {
     int i, j, k;

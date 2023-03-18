@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     bool bAssignSerial = false;
     bool bUpdateBootloader = true; /* At present, 7501 must update the bootloader at the same time */
     bool bForceUpdate = false;
-    QString filename = "fw.bin";
+    QString filename = "";
     int wait_time = 0;
 
     printVersion();
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     
     /* Auto get available serial ports that connect to  SIS Device*/
     if (bAutoDetect) 
-        exitCode = testSerialPort(&ComPortName);
+        testSerialPort(&ComPortName);
     
     /*
      * OPEN SIS UART COMM PORT
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
             ComPortName = tmp;
         }
 
-        qDebug() << "Open SiS" << ComPortName << "port";
+        //qDebug() << "Open SiS" << ComPortName << "port";
         serial.setPortName(ComPortName);
 
         /*
@@ -187,13 +187,11 @@ int main(int argc, char *argv[])
         printf("Failed to allocate memory\n");
         return 1;
     }
-
     if (fread(sis_fw_data, sizeof(char), (size_t)file_size, fp) != (size_t)file_size) {
         printf("Failed to read file\n");
         return 1;
     }
     fclose(fp);
-
 #else
     exitCode = readBinary("FW.BIN");
     if (exitCode) {
@@ -202,7 +200,6 @@ int main(int argc, char *argv[])
         return exitCode;
     }
 #endif
-    print_sep();
 
     //TODO
     /* Here we can disable GR Uart Debug message */
@@ -213,7 +210,6 @@ int main(int argc, char *argv[])
     exitCode = sisUpdateFlow(&serial, sis_fw_data,
                              bUpdateBootloader, 
                              bForceUpdate);
-
     print_sep();
 
     printf("\nExit code : %d\n", exitCode);
@@ -224,7 +220,7 @@ int main(int argc, char *argv[])
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
         printf("Update Firmware Failed\n");
     }
-
+    /* Recovery the color of text in console */
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
     free(sis_fw_data);
@@ -276,7 +272,6 @@ DWORD WINAPI RcvWaitProc(LPVOID lpParamter)
     SetCommMask( hComm, EV_RXCHAR );
     DWORD dwEventMask;
     WaitCommEvent( hComm, &dwEventMask, NULL );
-
     return(0L);
 }
 
@@ -408,7 +403,6 @@ int testSerialPort(QString *ComPortName)
     if (timeOutPortCount>0) {
         printf("(UART RX no response)\n");
     }
-
     return CT_EXIT_FAIL;
 }
 

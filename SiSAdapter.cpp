@@ -3,10 +3,6 @@
 #include <string.h>
 #include "SiSAdapter.h"
 
-static inline unsigned char BCD (unsigned char x);
-int getTimestamp();
-void print_sep();
-
 static inline unsigned char BCD (unsigned char x)
 {
     return ((x / 10) << 4) | (x % 10);

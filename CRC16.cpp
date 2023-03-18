@@ -7,7 +7,6 @@
  *
  * Returns the updated CRC value
  */
-
 #include "sis_command.h"
 
 quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
