@@ -1,7 +1,5 @@
 ﻿#ifndef SIS_COMMAND_H
 #define SIS_COMMAND_H
-#include <QTextStream>
-#include "SiSAdapter.h"
 
 #define MAX_BYTE    64
 
@@ -73,6 +71,5 @@
 #define GR_OP_WR                0x04
 #define GR_OP_DISABLE_DEBUG     0x05
 #define GR_OP_ENABLE_DEBUG      0x06
-
 
 #endif // SIS_COMMAND_H

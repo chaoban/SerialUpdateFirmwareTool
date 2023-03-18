@@ -527,7 +527,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
     /* 根據運算資料量設定進度欄的寬度
      * EX. 每4K設定5個字元寬
      */
-    int progresWidth = (pack_num / _4K_ALIGN_52B) * 2;
+    int progresWidth = (pack_num / _4K_ALIGN_52B) * 3;
 #endif
 
     for (retry = 0; retry < 3; retry++)
@@ -600,7 +600,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
     /* 根據運算資料量設定進度欄的寬度
      * EX. 每4K設定2個字元寬
      */
-    int progresWidth = (total_pack / _4K_ALIGN_52B) * 2;
+    int progresWidth = (total_pack / _4K_ALIGN_52B) * 3;
 #endif
     count_83 = addr;
     while (count_83 < end)
@@ -818,7 +818,11 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_v
     return true;
 }
 
-int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bForceUpdate)
+int sisUpdateFlow(QSerialPort* serial, 
+				  quint8 *sis_fw_data, 
+				  bool bUpdateBootloader, 
+				  bool bForceUpdate, 
+				  bool bjump_check)
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -897,17 +901,22 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
     /*
      * Check FW Info
      */
-#ifndef _DBG_DISABLE_CHECKFW
-    printf("Check Firmware Info\n");
-    if ( (chip_id != bin_chip_id) || (tp_size != bin_tp_size) || (tp_vendor_id != bin_tp_vendor_id) || (task_id != bin_task_id) || (chip_type != bin_chip_type) ) {
-        printf("Firmware info not match, stop update process!!");
-        return EXIT_FAIL;
-    }
-    //msleep(2000);
-    msleep(1000); //chaoban test
-#else
-    printf("Temporarily canceled Check Firmware Info\n");
-#endif
+     if ((chip_id != bin_chip_id) ||
+        (tp_vendor_id != bin_tp_vendor_id) ||
+        (task_id != bin_task_id) ||
+        (chip_type != bin_chip_type))
+     {
+        if (!bjump_check) {
+            printf("Firmware info not match, stop update firmware!!");
+            return EXIT_FAIL;
+        } else
+            printf("Firmware info not match, but jump_check is turn ON, so update process go on\n");
+      } else
+        printf("Check Firmware Info Success\n");
+
+      //chaoban test marked
+      //msleep(2000);
+        
     print_sep();
 
     /*
@@ -932,16 +941,16 @@ int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootload
      * Boot flag: 0x1eff0-0x1eff3
      * Value: 0x50 0x38 0x31 0x30
      */
-//#ifndef _DBG_DISABLE_CHECKFW
-#if 1
-    printf("Check BootFlag\n");
-    if (bin_bootflag != SIS_BOOTFLAG_P810) {
-        printf("Firmware Binary file broken, stop update process!!\n");
-        return EXIT_FAIL;
+    if (bin_bootflag == SIS_BOOTFLAG_P810) {
+        printf("Check BootFlag success\n");
+    } else {
+        if (!bjump_check) {
+            printf("Firmware Binary file broken, stop update process!!\n");
+            return EXIT_FAIL;
+        } else {
+            printf("Firmware Binary file broken, but jump_check is turn ON, so update process go on\n");
+        }
     }
-#else
-    printf("Temporarily canceled Check BootFlag of Binary file\n");
-#endif
 
     if (bootflag != SIS_BOOTFLAG_P810) {
         printf("Firmware broken, force update Firmware.\n");

@@ -44,10 +44,19 @@ int main(int argc, char *argv[])
     bool bScanSeriaport = false;
     bool bAutoDetect = false;
     bool bAssignSerial = false;
-    bool bUpdateBootloader = true; /* At present, 7501 must update the bootloader at the same time */
+    bool bUpdateBootloader = false; /* At present, 7501 must update the bootloader at the same time */
     bool bForceUpdate = false;
+    bool bjump_check = false;
     QString filename = "";
     int wait_time = 0;
+
+/* 注意7501開發階段
+ * 7501目前需要一併更新Bootloader
+ */
+#if 1
+    bUpdateBootloader = true;
+#endif
+
 
     printVersion();
 
@@ -71,6 +80,17 @@ int main(int argc, char *argv[])
         bScanSeriaport = true;
         printf("Argument: Scan All serial ports\n");
     }
+    if (a.arguments().contains("-f")) {
+        int index = a.arguments().indexOf("-f");
+        if (index + 1 < argc) {
+            filename = argv[index + 1];
+        }
+        printf("Argument: firmware file name: %s\n", filename.toStdString().c_str());
+    }
+    if (a.arguments().contains("--jump")) {
+        bjump_check = true;                //TODO
+        printf("Argument: jump parameter validation\n");
+    }
 
     /*
      * -a: 自動測試並取得連接SIS Device的Serial Port
@@ -90,13 +110,6 @@ int main(int argc, char *argv[])
         bAssignSerial = false;
         printf("Argument: Auto test all serial ports that connect to SiS device\n");
     }
-    if (a.arguments().contains("-f")) {
-        int index = a.arguments().indexOf("-f");
-        if (index + 1 < argc) {
-            filename = argv[index + 1];
-        }
-        printf("Argument: firmware file name: %s\n", filename.toStdString().c_str());
-    }
     if (a.arguments().contains("-ba")) {
         //bUpdateBootloader_auto = true;    //TODO
         printf("Argument: update bootloader automatically\n");
@@ -108,10 +121,6 @@ int main(int argc, char *argv[])
     if (a.arguments().contains("-r")) {
         //update_parameter = true;          //TODO
         printf("Argument: only update parameter\n");
-    }
-    if (a.arguments().contains("--jump")) {
-        //jump_check = true;                //TODO
-        printf("Argument: jump parameter validation\n");
     }
     if (a.arguments().contains("-w=")) {
         //wait_time = atoi(arg + 3);        //TODO
@@ -151,16 +160,16 @@ int main(int argc, char *argv[])
         serial.setFlowControl(QSerialPort::NoFlowControl);
 
         if (!serial.open(QIODevice::ReadWrite)) {
-            standardOutput << QObject::tr("Failed to open port %1, error: %2")
+            standardOutput << QObject::tr("Failed to open serial %1 port, error: %2")
                               .arg(ComPortName, serial.errorString())
                            << Qt::endl;
             return CT_EXIT_NO_COMPORT;
         }
 
-        printf("Open %s successfully.\n", ComPortName.toStdString().c_str());
+        printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
     }
     else {
-        printf("Do not have Open any Serial port, please see the HELP\n");
+        printf("Do not have Open any serial port, please see the HELP\n");
         return EXIT_ERR;
     }
 
@@ -205,11 +214,13 @@ int main(int argc, char *argv[])
     /* Here we can disable GR Uart Debug message */
     
 
+
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port";
     exitCode = sisUpdateFlow(&serial, sis_fw_data,
                              bUpdateBootloader, 
-                             bForceUpdate);
+                             bForceUpdate,
+                             bjump_check);
     print_sep();
 
     printf("\nExit code : %d\n", exitCode);

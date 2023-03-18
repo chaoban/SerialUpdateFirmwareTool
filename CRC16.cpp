@@ -8,7 +8,7 @@
  * Returns the updated CRC value
  */
 #include "sis_command.h"
-
+#include <QtGlobal>
 quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 static inline quint16 crc_itu_t_byte(quint16 crc, const quint8 data);
 quint16 crc_itu_t(quint16 crc, const quint8 *buffer, size_t len);
