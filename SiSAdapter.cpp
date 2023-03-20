@@ -37,5 +37,5 @@ int getTimestamp()
 
 void print_sep()
 {
-    printf( "-----\n" );
+    printf( "---------------\n" );
 }

@@ -65,8 +65,8 @@ bool handle_input(char *arg) {
     }
     if (!found) {
         printf("Unknow Command Arguments: %s\n", arg);
-        printf("You can use HELP to see the Command Arguments List:\n");
-        showHelp();
+        printf("You can use HELP to see the Command Arguments List\n");
+        //showHelp();
         ret = false;
     }
     return ret;
@@ -86,7 +86,6 @@ int main(int argc, char *argv[])
     QSerialPort serial; /* 開啟Serial Port用 */
 
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
-    bool bScanSeriaport = false;
     bool bAutoDetect = false;
     bool bAssignPort = false;
     bool bUpdateBootloader = false; /* At present, 7501 must update the bootloader at the same time */
@@ -98,19 +97,19 @@ int main(int argc, char *argv[])
     QString filename = "";
     //int bwaitTime;
 
-/* 注意7501開發階段
- * 7501目前需要一併更新Bootloader
- */
-#if 0 //TODO
-    bUpdateBootloader = true;
-#endif
     printVersion();
     print_sep();
 
+    /*
+     *  參數parse
+     *  檢查不合法的參數
+     */
     for (int i = 1; i < argc; i++) {
-        if (!handle_input(argv[i]))
+        if (!handle_input(argv[i])) {
+            print_sep();
             return EXIT_ERR;
-
+        }
+        /* 跳過對檔案名稱和Serial port的檢查，避免當成不合法參數 */
         if ((strcmp(argv[i], "-f" ) == 0) ||
             (strcmp(argv[i], "-c" ) == 0)) {
             i++;
@@ -120,23 +119,22 @@ int main(int argc, char *argv[])
     // SHOW HELP
     if (a.arguments().contains("-h")) {
         showHelp();
+		print_sep();
+        return EXIT_OK;
+    }
+    if (a.arguments().contains("-s")) {
+        printf("Scan and list all available serial ports\n");
+        scanSerialport();
+        print_sep();
         return EXIT_OK;
     }
 
     /*
      * PARSE AND GET COMMAND ARGUMENTS
      */
-    if (a.arguments().contains("-b")) {
-        bUpdateBootloader = true;
-        printf("Argument: Update bootloader\n");
-    }
     if (a.arguments().contains("--force")) {
         bForceUpdate = true;
         printf("Argument: Force update\n");
-    }
-    if (a.arguments().contains("-s")) {
-        bScanSeriaport = true;
-        printf("Argument: Scan All serial ports\n");
     }
     if (a.arguments().contains("-f")) {
         int index = a.arguments().indexOf("-f");
@@ -146,7 +144,7 @@ int main(int argc, char *argv[])
         printf("Argument: Firmware file name: %s\n", filename.toStdString().c_str());
     }
     if (a.arguments().contains("--jump")) {
-        bjump_check = true;                //TODO
+        bjump_check = true;
         printf("Argument: Jump parameter validation\n");
     }
 
@@ -168,9 +166,18 @@ int main(int argc, char *argv[])
         bAssignPort = false;
         printf("Argument: Auto test all serial ports that connect to SiS device\n");
     }
+
+    /*
+     * 同時下"更新Bootloader"和
+     *      "自動更新Bootloader"時，
+     *      以"自動"為優先
+     */
     if (a.arguments().contains("-ba")) {
-        bUpdateBootloader_auto = true;    //TODO
+        bUpdateBootloader_auto = true;
         printf("Argument: Update bootloader automatically\n");
+    } else if (a.arguments().contains("-b")) {
+        bUpdateBootloader = true;
+        printf("Argument: Update bootloader\n");
     }
     if (a.arguments().contains("-g")) {
         breserveRODATA = true;            //TODO
@@ -188,10 +195,6 @@ int main(int argc, char *argv[])
 */
     print_sep();
 
-    /* Scan and list all available serial ports */
-    if (bScanSeriaport) 
-        scanSerialport();
-    
     /* Auto get available serial ports that connect to  SIS Device*/
     if (bAutoDetect) 
         testSerialPort(&ComPortName);
@@ -276,8 +279,10 @@ int main(int argc, char *argv[])
 
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port";
-    exitCode = sisUpdateFlow(&serial, sis_fw_data,
-                             bUpdateBootloader, 
+    exitCode = sisUpdateFlow(&serial,
+                             sis_fw_data,
+                             bUpdateBootloader,
+                             bUpdateBootloader_auto,
                              bForceUpdate,
                              bjump_check);
     print_sep();
@@ -494,7 +499,6 @@ int readBinary(QString path)
     {
       // return value from 'file.read' should always be sizeof(char).
       file.read(&file_data,sizeof(char));
-      //TODO: 要轉換格式
       FirmwareString.append(file_data);
     }
     file.close();

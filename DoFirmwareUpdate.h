@@ -18,7 +18,7 @@ enum SIS_817_POWER_MODE {
 
 enum SIS_817_POWER_MODE sis_get_fw_mode();
 int verifyRxData(uint8_t *buffer);
-int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bForceUpdate, bool bjump_check);
+int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bUpdateBootloader_auto, bool bForceUpdate, bool bjump_check);
 bool sis_Switch_Cmd_Mode(QSerialPort* serial);
 bool sis_Flash_Rom(QSerialPort* serial);
 bool sis_Clear_Bootflag(QSerialPort* serial);
