@@ -1,6 +1,5 @@
 ﻿#include <time.h>
 #include <stdio.h>
-#include <string.h>
 #include "SiSAdapter.h"
 
 static inline unsigned char BCD (unsigned char x)
@@ -30,6 +29,8 @@ int getTimestamp()
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_mday))<<16;
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_hour))<<8;
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_min ));
+
+    //int year = BCD(static_cast<unsigned char>(newtime.tm_year));
 
     return mmddHHMM;
 }

@@ -27,6 +27,51 @@ int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
 
+/* 參數訊息列表 */
+struct input_handler {
+    char *arg_name;  // 參數名稱
+    char *msg;       // 對應的訊息
+};
+struct input_handler handlers[] = {
+    {"-b",      "Update the bootloader"},
+    {"--force", "Force firmware update without considering version"},
+    {"-s",      "Scan and list all available serial ports"},
+    {"-f",      "Firmware file name"},
+    {"--jump",  "Jump parameter validation"},
+    {"-c",      "Specify updating firmware through which serial port"},
+    {"-ba",     "Update bootloader automatically"},
+    {"-g",      "Reserve RO data"},
+    {"-r",      "Only update parameter"},
+    {"-a",      "Automatically detect the serial port connected to the SiS device for firmware update"},
+    {"-h",      "Show Help",}
+//    {"-w",      "Wait time set"},
+};
+
+void showHelp() {
+    for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+        printf("%-10s: %s\n", handlers[i].arg_name, handlers[i].msg);
+    }
+}
+
+bool handle_input(char *arg) {
+    int found = 0;
+    bool ret = true;
+    for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+        if (strcmp(handlers[i].arg_name, arg) == 0) {
+            //printf("%s\n", handlers[i].msg);
+            found = 1;
+            break;
+        }
+    }
+    if (!found) {
+        printf("Unknow Command Arguments: %s\n", arg);
+        printf("You can use HELP to see the Command Arguments List:\n");
+        showHelp();
+        ret = false;
+    }
+    return ret;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -43,38 +88,51 @@ int main(int argc, char *argv[])
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
     bool bScanSeriaport = false;
     bool bAutoDetect = false;
-    bool bAssignSerial = false;
+    bool bAssignPort = false;
     bool bUpdateBootloader = false; /* At present, 7501 must update the bootloader at the same time */
     bool bForceUpdate = false;
     bool bjump_check = false;
+    bool bUpdateBootloader_auto = false;
+    bool breserveRODATA = false;
+    bool bupdateParameter = false;
     QString filename = "";
-    int wait_time = 0;
+    //int bwaitTime;
 
 /* 注意7501開發階段
  * 7501目前需要一併更新Bootloader
  */
-#if 1
+#if 0 //TODO
     bUpdateBootloader = true;
 #endif
-
-
     printVersion();
-
-    int mmddHHMM = getTimestamp();
-    printf("Time Stamp: %08x\n", mmddHHMM);
-
     print_sep();
 
-    /* 
-     * PARSE AND GET COMMAND ARGUMENTS 
+    for (int i = 1; i < argc; i++) {
+        if (!handle_input(argv[i]))
+            return EXIT_ERR;
+
+        if ((strcmp(argv[i], "-f" ) == 0) ||
+            (strcmp(argv[i], "-c" ) == 0)) {
+            i++;
+        }
+    }
+
+    // SHOW HELP
+    if (a.arguments().contains("-h")) {
+        showHelp();
+        return EXIT_OK;
+    }
+
+    /*
+     * PARSE AND GET COMMAND ARGUMENTS
      */
     if (a.arguments().contains("-b")) {
         bUpdateBootloader = true;
-        printf("Argument: update bootloader\n");
+        printf("Argument: Update bootloader\n");
     }
     if (a.arguments().contains("--force")) {
         bForceUpdate = true;
-        printf("Argument: force update\n");
+        printf("Argument: Force update\n");
     }
     if (a.arguments().contains("-s")) {
         bScanSeriaport = true;
@@ -85,11 +143,11 @@ int main(int argc, char *argv[])
         if (index + 1 < argc) {
             filename = argv[index + 1];
         }
-        printf("Argument: firmware file name: %s\n", filename.toStdString().c_str());
+        printf("Argument: Firmware file name: %s\n", filename.toStdString().c_str());
     }
     if (a.arguments().contains("--jump")) {
         bjump_check = true;                //TODO
-        printf("Argument: jump parameter validation\n");
+        printf("Argument: Jump parameter validation\n");
     }
 
     /*
@@ -99,7 +157,7 @@ int main(int argc, char *argv[])
     */
     if (a.arguments().contains("-c")) {
         bAutoDetect = false;
-        bAssignSerial = true;
+        bAssignPort = true;
         int index = a.arguments().indexOf("-c");
         if (index + 1 < argc) {
             ComPortName = argv[index + 1];
@@ -107,26 +165,27 @@ int main(int argc, char *argv[])
         printf("Argument: Assign the %s port to update\n", ComPortName.toStdString().c_str());
     } else if (a.arguments().contains("-a")) {
         bAutoDetect = true;
-        bAssignSerial = false;
+        bAssignPort = false;
         printf("Argument: Auto test all serial ports that connect to SiS device\n");
     }
     if (a.arguments().contains("-ba")) {
-        //bUpdateBootloader_auto = true;    //TODO
-        printf("Argument: update bootloader automatically\n");
+        bUpdateBootloader_auto = true;    //TODO
+        printf("Argument: Update bootloader automatically\n");
     }
     if (a.arguments().contains("-g")) {
-        //reserve_RODATA = true;            //TODO
-        printf("Argument: reserve RO data\n");
+        breserveRODATA = true;            //TODO
+        printf("Argument: Reserve RO data\n");
     }
     if (a.arguments().contains("-r")) {
-        //update_parameter = true;          //TODO
-        printf("Argument: only update parameter\n");
+        bupdateParameter = true;          //TODO
+        printf("Argument: Only update parameter\n");
     }
+/*
     if (a.arguments().contains("-w=")) {
-        //wait_time = atoi(arg + 3);        //TODO
-        printf("Argument: wait time set: %d\n", wait_time);
+        //bwaitTime = atoi(arg + 3);        //TODO
+        printf("Argument: Wait time set: %d\n", wait_time);
     }
-
+*/
     print_sep();
 
     /* Scan and list all available serial ports */
@@ -140,7 +199,7 @@ int main(int argc, char *argv[])
     /*
      * OPEN SIS UART COMM PORT
      */
-    if ((bAutoDetect) || (bAssignSerial)) {
+    if ((bAutoDetect) || (bAssignPort)) {
         if (ComPortName.size()>4) {
             QString tmp = "\\\\.\\";
             tmp.append(ComPortName);

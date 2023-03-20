@@ -1008,13 +1008,9 @@ int sisUpdateFlow(QSerialPort* serial,
     print_sep();
 
     /*
-     * Update FW
-     * burningCode
+     * Update Firmware
+     * burningCode()
      */
-    SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-    printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
-    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-
 #if 0
     bForceUpdate = true;
     bUpdateBootloader = false;
@@ -1022,9 +1018,17 @@ int sisUpdateFlow(QSerialPort* serial,
 
     if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
             || bForceUpdate == true) { 
-        //Special Update Flag : 0x6613: update by serial tool
+        //Special Update Flag : Update by serial port tool
         sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
         sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
+
+        // TODO: Add time stamp in sis_fw_data[]
+        int timeStamp = getTimestamp();
+            printf("Time Stamp: %08x\n", timeStamp);
+
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
+        printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
+        SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
         ret = burningCode(serial, sis_fw_data, bUpdateBootloader);
 

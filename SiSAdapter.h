@@ -1,7 +1,8 @@
 ﻿#ifndef SISADAPTER_H
 #define SISADAPTER_H
+#include <stdio.h>
+#include <string.h>
 
-static inline unsigned char BCD (unsigned char x);
 int getTimestamp();
 void print_sep();
 #ifdef _PROCESSBAR
