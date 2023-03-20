@@ -13,9 +13,9 @@ void printVersion();
 void printVersion()
 {
 #ifndef DESC
-    printf("V%d.%d.%d\n", MAIN_VERSION, SUB_VERSION, LAST_VERSION);
+    printf("Silicon Integrated Systems Corp. (2023) Version %d.%d.%d\n", MAIN_VERSION, SUB_VERSION, LAST_VERSION);
 #else
-    printf("V%d.%d.%d %s\n", MAIN_VERSION, SUB_VERSION, LAST_VERSION, DESC);
+    printf("Silicon Integrated Systems Corp. (2023) Version %d.%d.%d %s\n", MAIN_VERSION, SUB_VERSION, LAST_VERSION, DESC);
 #endif
 }
 

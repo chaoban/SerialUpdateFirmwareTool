@@ -374,7 +374,6 @@ int sis_Reset_Cmd(QSerialPort* serial)
     return EXIT_OK;
 }
 
-//TODO: CHAOBAN TEST: This function should be rename.
 /*
  * 指定燒錄的ROM Address和長度
  * 使用83 command
@@ -382,12 +381,12 @@ int sis_Reset_Cmd(QSerialPort* serial)
  * 長度為要使用84 command傳送幾次 Packages number
  * 一個84 command的Payload用每筆52b去切割為多個Packages
  */
-static bool sis_write_fw_info(QSerialPort* serial, unsigned int addr, int pack_num)
+static bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 {
     int ret = 0;
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
 
-    //printf("sis_write_fw_info()\n");
+    //printf("sisUpdateCmd()\n");
     sis_Make_83_Buffer(sis817_cmd_83, addr, pack_num);
 	
     ret = sisCmdTx(serial, sizeof(sis817_cmd_83), sis817_cmd_83);
@@ -420,9 +419,9 @@ static bool sis_write_fw_info(QSerialPort* serial, unsigned int addr, int pack_n
  * val: Firmware BIN File內要開始寫入的ADDRESS
  * count: 4Bytes ~ 52Bytes不等
  */
-static bool sis_write_fw_payload(QSerialPort* serial, const quint8 *val, unsigned int count)
+static bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
 {
-    //printf("sis_write_fw_payload()\n");
+    //printf("sisWriteDataCmd()\n");
     int ret = 0;
     quint8 len = BIT_PALD + count;
     quint8 *sis817_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
@@ -461,10 +460,10 @@ static bool sis_write_fw_payload(QSerialPort* serial, const quint8 *val, unsigne
     return EXIT_OK;
 }
 
-//static bool sis_Flash_Rom()
-bool sis_Flash_Rom(QSerialPort* serial)
+//static bool sisFlashRom()
+bool sisFlashRom(QSerialPort* serial)
 {
-    //printf("sis_Flash_Rom()\n");
+    //printf("sisFlashRom()\n");
     int ret = 0;
 	uint8_t sis_cmd_81[CMD_SZ_FLASH] = {SIS_REPORTID, 
                                         0x00, /* CRC */ 
@@ -503,9 +502,9 @@ bool sis_Flash_Rom(QSerialPort* serial)
 //static bool sis_clear_bootflag()
 bool sis_clear_bootflag(QSerialPort* serial)
 {
-    /* sis_write_fw_info
-     * sis_write_fw_payload
-     * sis_Flash_Rom
+    /* sisUpdateCmd
+     * sisWriteDataCmd
+     * sisFlashRom
      */
     int ret, retry, i;
     int pack_num = 0;
@@ -532,7 +531,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
     for (retry = 0; retry < 3; retry++)
     {
         //printf("Write to addr = 0001e000 pack_num=%d \n", pack_num);
-        ret = sis_write_fw_info(serial, 0x0001e000, pack_num);
+        ret = sisUpdateCmd(serial, 0x0001e000, pack_num);
 
 		if (ret) {
 			printf("sis Write FW info (0x83) error.\n");
@@ -546,7 +545,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
             progresBar(pack_num, i + 1, progresWidth); // 列印進度條
 #endif
             size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
-            ret = sis_write_fw_payload(serial, tmpbuf, size_84);
+            ret = sisWriteDataCmd(serial, tmpbuf, size_84);
 
             if (ret)
                 break;
@@ -562,7 +561,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
 
         //msleep(1000);
 
-        ret = sis_Flash_Rom(serial);
+        ret = sisFlashRom(serial);
 
 		if (ret) {
 			printf("sis Flash ROM (0x81) error.\n");
@@ -581,7 +580,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
     return EXIT_OK;
 }
 
-static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int addr, unsigned int count)
+static bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsigned int count)
 {
     int i, ret, block_retry;
 	unsigned int end = addr + count;
@@ -589,9 +588,9 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
 	unsigned int count_84 = 0, size_84 = 0; // count_84: address, size_84: length
     int pack_num = 0;
     /*
-     * sis_write_fw_info: Use 83 COMMAND
-     * sis_write_fw_payload: Use 84 COMMAND
-     * sis_Flash_Rom
+     * sisUpdateCmd: Use 83 COMMAND
+     * sisWriteDataCmd: Use 84 COMMAND
+     * sisFlashRom
     */
 #ifdef _PROCESSBAR
     int total_pack = (count / _4K) * ((_4K + PACK_SIZE - 1) / PACK_SIZE);
@@ -606,7 +605,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
     {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
 #if 0        
-        printf("sis_update_block size83 = %d, count_83 = %d\n", size_83, count_83);
+        printf("sisUpdateBlock size83 = %d, count_83 = %d\n", size_83, count_83);
 #endif
         /* pack_num = 79, 158, or 237 */
         pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);
@@ -615,7 +614,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
         {
             //printf("Write to addr = %08x pack_num=%d \n", count_83, pack_num);
 
-            ret = sis_write_fw_info(serial, count_83, pack_num);
+            ret = sisUpdateCmd(serial, count_83, pack_num);
 
             if (ret) {
                 printf("sis Write FW info (0x83) error.\n");
@@ -632,9 +631,9 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
 #endif
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
-                printf("sis_update_block size84 = %d, count_84 = %d\n", size_84, count_84);
+                printf("sisUpdateBlock size84 = %d, count_84 = %d\n", size_84, count_84);
 #endif
-                ret = sis_write_fw_payload(serial, data + count_84, size_84);
+                ret = sisWriteDataCmd(serial, data + count_84, size_84);
                 if (ret)
                     break;
                 count_84 += size_84;
@@ -647,7 +646,7 @@ static bool sis_Update_Block(QSerialPort* serial, quint8 *data, unsigned int add
             
             //msleep(1000);//TODO: Chaoban test: Need or Not
 
-            ret = sis_Flash_Rom(serial);
+            ret = sisFlashRom(serial);
             if (ret) {
                 printf("sis Flash ROM (0x81) error.\n");
                 continue;
@@ -699,7 +698,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      *     ADDRESS: 0x4000, Length=0x1A000
      */
     printf("Update Main Code Section 1 ...\n");
-    ret = sis_Update_Block(serial, fn, 0x00007000, 0x00016000);
+    ret = sisUpdateBlock(serial, fn, 0x00007000, 0x00016000);
     if (ret) {
         printf("SiS update firmware fail at Main Code Section 1\n");
         return EXIT_FAIL;
@@ -710,7 +709,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
 #if 1
     printf("Update Main Code Section 2 ...\n");
-    ret = sis_Update_Block(serial, fn, 0x00006000, 0x00001000);
+    ret = sisUpdateBlock(serial, fn, 0x00006000, 0x00001000);
     if (ret) {
         printf("SiS update firmware fail at Main Code Section 2\n");
         return EXIT_FAIL;
@@ -722,7 +721,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
 #if 1
     printf("Update firmware info ...\n");
-    ret = sis_Update_Block(serial, fn, 0x00004000, 0x00002000);
+    ret = sisUpdateBlock(serial, fn, 0x00004000, 0x00002000);
     if (ret) {
         printf("SiS update firmware fail at info, regmem ...\n");
         return EXIT_FAIL;
@@ -735,7 +734,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
     if ( bUpdateBootloader ) {
         printf("Update Boot loader ...\n");
-        ret = sis_Update_Block(serial, fn, 0x00000000, 0x00004000);
+        ret = sisUpdateBlock(serial, fn, 0x00000000, 0x00004000);
 	    if (ret) {
             printf("SiS update firmware fail at Boot loader\n");
             return EXIT_FAIL;
@@ -747,7 +746,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
 #if 1
     printf("Update Rodata and Boot Flag ...\n");
-    ret = sis_Update_Block(serial, fn, 0x0001d000, 0x00002000);
+    ret = sisUpdateBlock(serial, fn, 0x0001d000, 0x00002000);
     if (ret) {
         printf("SiS update firmware fail at Rodata and Boot Flag\n");
         return EXIT_FAIL;
@@ -759,7 +758,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
 #if 0
     printf("Burn Boot Flag ...\n");
-    ret = sis_Update_Block(serial, fn, 0x0001e000, 0x00001000);
+    ret = sisUpdateBlock(serial, fn, 0x0001e000, 0x00001000);
     if (ret) {
         printf("SiS update firmware fail at Boot Flag\n");
         return EXIT_FAIL;
@@ -771,7 +770,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      */
 #if 0
     printf("FOR TEST AND VERIFY ...\n");
-    ret = sis_Update_Block(serial, fn, 0x00000000, 0x0001F000);
+    ret = sisUpdateBlock(serial, fn, 0x00000000, 0x0001F000);
     if (ret) {
         printf("Chaoban TEST AND VERIFY in burningCode()\n");
         return EXIT_FAIL;
@@ -1056,11 +1055,9 @@ int sisUpdateFlow(QSerialPort* serial,
      }
      else if (bin_fw_version > 0xabff) {
         printf("Unavilable Firmware version.\n");
-        //goto work_mode;//TODO: CHAOBAN TEST
      }
      else {
         printf("Current Firmware version is same or later than bin.\n");
-        //goto work_mode;//TODO: CHAOBAN TEST
      }
 
     return EXIT_OK;

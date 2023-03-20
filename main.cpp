@@ -36,9 +36,9 @@ struct input_handler handlers[] = {
     {"-b",      "Update the bootloader"},
     {"--force", "Force firmware update without considering version"},
     {"-s",      "Scan and list all available serial ports"},
-    {"-f",      "Firmware file name"},
+    {"-f",      "Firmware file name\n            Usage: -f [filename]"},
     {"--jump",  "Jump parameter validation"},
-    {"-c",      "Specify updating firmware through which serial port"},
+    {"-c",      "Specify updating firmware through which serial port\n            Usage: -c [Serial port number], such as com3"},
     {"-ba",     "Update bootloader automatically"},
     {"-g",      "Reserve RO data"},
     {"-r",      "Only update parameter"},
@@ -48,6 +48,7 @@ struct input_handler handlers[] = {
 };
 
 void showHelp() {
+    printf("\n");
     for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         printf("%-10s: %s\n", handlers[i].arg_name, handlers[i].msg);
     }
@@ -75,8 +76,8 @@ bool handle_input(char *arg) {
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-    //const int argumentCount = QCoreApplication::arguments().size();
-    //const QStringList argumentList = QCoreApplication::arguments();
+    const int argumentCount = QCoreApplication::arguments().size();
+    const QStringList argumentList = QCoreApplication::arguments();
     QTextStream standardOutput(stdout);
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -96,6 +97,17 @@ int main(int argc, char *argv[])
     bool bupdateParameter = false;
     QString filename = "";
     //int bwaitTime;
+
+    /*
+     * 沒有接參數的時候，顯示指令用法
+     */
+    if (argumentCount == 1) {
+        printVersion();
+        printf("\n");
+        printf("Usage: %s [ Options ] | [File] | [Serial Port]\n", argumentList.first().toLocal8Bit().constData());
+        showHelp();
+        return EXIT_OK;
+    }
 
     printVersion();
     print_sep();
