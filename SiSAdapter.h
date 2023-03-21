@@ -57,24 +57,26 @@ enum
  *  totalProgress 表示總共需要工作的次數
  *  currentProgress 表示當前工作的次數
  *  progressBarWidth 表示進度條的寬度。例如30表示總長度為30個字元
+ *  updateTime 表示更新頻率，單位為秒
  */
 #ifdef _PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime) {
     
-	static time_t lastTime = 0;
+    static time_t lastTime = 0; // 調整更新頻率用
 
     // 如果 current 等於 total，則強制更新進度條為100%
+    // 避免因為更新頻率的關係導致沒有顯示完整100%
     if (currentProgress == totalProgress) {
         printf("[");
         for (int i = 0; i < progressBarWidth; i++) {
             printf("#");
         }
-        printf("] 100%%");
+        printf("] [  OK  ]");
         fflush(stdout);
         return;
     }
 
-    // 檢查時間間隔是否符合要求，調整更新頻率用
+    // 檢查時間間隔是否符合要求
     if ((time(NULL) - lastTime) < updateTime) {
         return;
     }
@@ -100,8 +102,7 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
     for (i = filled_width; i < progressBarWidth; i++) {
         printf(".");
     }
-    //printf("] %.1f%%\r", percent*100);
-    printf("] %i%\r", (int)(percent*100));
+    printf("] [ %d%% ]\r", (int)(percent*100));
     fflush(stdout);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);

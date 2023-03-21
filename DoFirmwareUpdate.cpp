@@ -24,7 +24,7 @@ extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 /*
  * Serial Write Commands
  */
-static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
+int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 {
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
@@ -69,7 +69,7 @@ static int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 /*
  * Serial Read Commands
  */
-static int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
+int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_OK;
     //const QByteArray rbuffer = serial->readAll();
@@ -100,7 +100,7 @@ static int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 /*
  * Change Mode
  */
-bool sis_Switch_Cmd_Mode(QSerialPort* serial)
+bool sisSwitchCmdMode(QSerialPort* serial)
 {
     int ret = -1;
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -134,7 +134,7 @@ bool sis_Switch_Cmd_Mode(QSerialPort* serial)
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() <<"SiS READ Switch CMD Faile - 85(PWR_CMD_ACTIVE)\n";
         return false;
@@ -159,7 +159,7 @@ bool sis_Switch_Cmd_Mode(QSerialPort* serial)
     }
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ Switch CMD Faile - 85(ENABLE_DIAGNOSIS_MODE)\n";
         return false;
@@ -231,7 +231,7 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
  * Boot flag: 0x50 0x38 0x31 0x30
  * Address: 0x1eff0 - 0x1eff3
 */
-static int sis_Get_Bootflag(QSerialPort* serial, quint32 *bootflag)
+int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
 {
     int ret = 0;
     uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID,0x00/*CRC*/,
@@ -247,7 +247,7 @@ static int sis_Get_Bootflag(QSerialPort* serial, quint32 *bootflag)
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ CMD Faile - Read Data (86)\n";
         return EXIT_FAIL;
@@ -271,7 +271,7 @@ static int sis_Get_Bootflag(QSerialPort* serial, quint32 *bootflag)
 
 //TODO: CHAOBAN TEST 
 //要讀0xA0004000+[14:15]的FW Version有用或沒用
-static bool sis_get_fw_id(QSerialPort* serial, quint16 *fw_version)
+bool sisGetFwId(QSerialPort* serial, quint16 *fw_version)
 {
     quint8 tmpbuf[MAX_BYTE] = {0};
     *fw_version = (tmpbuf[22] << 8) | (tmpbuf[23]);
@@ -289,7 +289,7 @@ static bool sis_get_fw_id(QSerialPort* serial, quint16 *fw_version)
  * 13   :   Type
  * 14-15:   FW Version
 */
-static int sis_get_fw_info(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
+int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 {
     int ret = 0;
     int rlength = READ_SIZE;
@@ -315,7 +315,7 @@ static int sis_get_fw_info(QSerialPort* serial, quint8 *chip_id, quint32 *tp_siz
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         qDebug() << "SiS READ DATA Faile - Read FW INFO (86)\n";
         return EXIT_FAIL;
@@ -339,8 +339,8 @@ static int sis_get_fw_info(QSerialPort* serial, quint8 *chip_id, quint32 *tp_siz
     return EXIT_OK;
 }
 
-//static bool sis_Reset_Cmd()
-int sis_Reset_Cmd(QSerialPort* serial)
+//static bool sisResetCmd()
+int sisResetCmd(QSerialPort* serial)
 {
     int ret = 0;
 	uint8_t sis_cmd_82[CMD_SZ_RESET] = {SIS_REPORTID,
@@ -357,7 +357,7 @@ int sis_Reset_Cmd(QSerialPort* serial)
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ reset CMD Failed - 82(RESET) %d\n", ret);
 	    return EXIT_FAIL;
@@ -381,7 +381,7 @@ int sis_Reset_Cmd(QSerialPort* serial)
  * 長度為要使用84 command傳送幾次 Packages number
  * 一個84 command的Payload用每筆52b去切割為多個Packages
  */
-static bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
+bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 {
     int ret = 0;
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
@@ -397,7 +397,7 @@ static bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
 	if (ret < 0) {
         printf("sis Update CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return -1;
@@ -419,7 +419,7 @@ static bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
  * val: Firmware BIN File內要開始寫入的ADDRESS
  * count: 4Bytes ~ 52Bytes不等
  */
-static bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
+bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
 {
     //printf("sisWriteDataCmd()\n");
     int ret = 0;
@@ -441,7 +441,7 @@ static bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int
 
 #ifndef _DBG_DISABLE_READCMD
     quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
         printf("sis READ write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return -1;
@@ -481,7 +481,7 @@ bool sisFlashRom(QSerialPort* serial)
 	
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ flash CMD Failed - 81(FLASH_ROM) %d\n", ret);
 	    return -1;
@@ -499,8 +499,8 @@ bool sisFlashRom(QSerialPort* serial)
     return EXIT_OK;
 }
 
-//static bool sis_clear_bootflag()
-bool sis_clear_bootflag(QSerialPort* serial)
+//static bool sisClearBootflag()
+bool sisClearBootflag(QSerialPort* serial)
 {
     /* sisUpdateCmd
      * sisWriteDataCmd
@@ -580,7 +580,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
     return EXIT_OK;
 }
 
-static bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsigned int count)
+bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsigned int count)
 {
     int i, ret, block_retry;
 	unsigned int end = addr + count;
@@ -674,7 +674,7 @@ static bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr,
     return EXIT_OK;
 }
 
-static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
+bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 {
     int ret = 0;
 
@@ -688,7 +688,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      *     Clear boot-flag to zero
      */
     printf("Clear Boot flag ...\n");
-    ret = sis_clear_bootflag(serial);
+    ret = sisClearBootflag(serial);
     if (ret) {
         printf("SiS update firmware fail at Clear Boot Flag\n");
         return EXIT_FAIL;
@@ -780,7 +780,7 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     /* Reset */
 #if 1
     printf("Reset SIS Device\n");
-    ret = sis_Reset_Cmd(serial);
+    ret = sisResetCmd(serial);
     if (ret) {
         printf("sis RESET failed %d\n", ret);
     }
@@ -790,11 +790,10 @@ static bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     return EXIT_OK;
 }
 
-static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_version, quint32 *bootloader_crc)
+bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, quint32 *bootloader_crc)
 {
     int ret = 0;
     //int i=0;
-    uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID,
         0x00, CMD_SISREAD, 0x30, 0x02, 0x00, 0xa0, 0x34, 0x00};
     sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
@@ -806,7 +805,8 @@ static bool sis_Get_Bootloader_Id_Crc(QSerialPort* serial, quint32 *bootloader_v
     }
 
 #ifndef _DBG_DISABLE_READCMD
-    ret = sisCmdRx(sizeof(tmpbuf), tmpbuf);
+    uint8_t tmpbuf[MAX_BYTE] = {0};
+    ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret < 0) {
 	    printf("sis READ Get Bootloader ID CMD Failed - 86 %d\n", ret);
 	    return -1;
@@ -861,8 +861,8 @@ int sisUpdateFlow(QSerialPort* serial,
      */
 #if 1
     printf("Switch Firmware Mode\n");
-    if (!sis_Switch_Cmd_Mode(serial)) {
-        qDebug() << "Error: sis_Switch_Cmd_Mode Fails";
+    if (!sisSwitchCmdMode(serial)) {
+        qDebug() << "Error: sisSwitchCmdMode Fails";
         return EXIT_ERR;
     }
 #else
@@ -870,11 +870,11 @@ int sisUpdateFlow(QSerialPort* serial,
 #endif
     /*
      * Get FW Information and Check FW Info
-     * sis_get_fw_info
+     * sisGetFwInfo
      */
 #if 1
     printf("Get Firmware Information\n");
-    ret = sis_get_fw_info(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+    ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
         printf("sis get fw info failed %d\n", ret);
     }
@@ -928,11 +928,11 @@ int sisUpdateFlow(QSerialPort* serial,
 
     /*
      * Get BootFlag
-     * sis_Get_Bootflag()
+     * sisGetBootflag()
      */
 #if 1
     printf("Get BootFlag\n");
-    ret = sis_Get_Bootflag(serial, &bootflag);
+    ret = sisGetBootflag(serial, &bootflag);
     if (ret) {
         printf("sis get bootflag failed, Error code: %d\n", ret);
     }
@@ -974,11 +974,11 @@ int sisUpdateFlow(QSerialPort* serial,
 
     /*
      * Get Bootloader ID and Bootloader CRC
-     * sis_Get_Bootloader_Id_Crc
+     * sisGetBootloaderId_Crc
      */
 #if 1
     printf("Get Bootloader ID and Bootloader CRC\n");
-    ret = sis_Get_Bootloader_Id_Crc(serial, &bootloader_version, &bootloader_crc_version);
+    ret = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (ret) {
         printf("SiS get bootloader ID or CRC fail. Error code: %d\n", ret);
     }

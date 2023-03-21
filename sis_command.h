@@ -1,5 +1,6 @@
 ﻿#ifndef SIS_COMMAND_H
 #define SIS_COMMAND_H
+typedef int ram_size_t;
 
 #define MAX_BYTE    64
 
@@ -7,7 +8,7 @@
 #define SIS_ERR         -1
 
 //SIS UPDATE FW
-#define RAM_SIZE		_12K
+#define RAM_SIZE ((ram_size_t)_12K)
 #define PACK_SIZE		52
 
 //SIS OP CODE

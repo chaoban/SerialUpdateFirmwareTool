@@ -29,10 +29,10 @@ bool mismatchKey = FALSE;
 
 /* 參數訊息列表 */
 struct input_handler {
-    char *arg_name;  // 參數名稱
-    char *msg;       // 對應的訊息
+    const char *arg_name;  // 參數名稱
+    const char *msg;       // 對應的訊息
 };
-struct input_handler handlers[] = {
+struct input_handler handlers[11] = {
     {"-b",      "Update the bootloader"},
     {"--force", "Force firmware update without considering version"},
     {"-s",      "Scan and list all available serial ports"},
@@ -42,14 +42,14 @@ struct input_handler handlers[] = {
     {"-ba",     "Update bootloader automatically"},
     {"-g",      "Reserve RO data"},
     {"-r",      "Only update parameter"},
-    {"-a",      "Automatically detect the serial port connected to the SiS device for firmware update"},
-    {"-h",      "Show Help",}
 //    {"-w",      "Wait time set"},
+    {"-a",      "Automatically detect the serial port connected to the SiS device for firmware update"},
+    {"-h",      "Show Help"}
 };
 
 void showHelp() {
     printf("\n");
-    for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+    for (unsigned int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         printf("%-10s: %s\n", handlers[i].arg_name, handlers[i].msg);
     }
 }
@@ -57,7 +57,7 @@ void showHelp() {
 bool handle_input(char *arg) {
     int found = 0;
     bool ret = true;
-    for (int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
+    for (unsigned int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
         if (strcmp(handlers[i].arg_name, arg) == 0) {
             //printf("%s\n", handlers[i].msg);
             found = 1;
