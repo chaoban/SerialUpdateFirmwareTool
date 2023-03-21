@@ -2,11 +2,14 @@
 #define SISADAPTER_H
 #include <stdio.h>
 #include <string.h>
+#ifdef _PROCESSBAR
+#include <time.h>
+#endif
 
 int getTimestamp();
 void print_sep();
 #ifdef _PROCESSBAR
-inline void progresBar(int total, int current, int width);
+inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime);
 #endif
 
 #if 0
@@ -51,32 +54,58 @@ enum
  * 進度條函數 progresBar
  * inline函式的實體放標頭檔
  * 接受三個參數：total、current 和 width
- *  total 表示總共需要工作的次數
- *  current 表示當前工作的次數
- *  width 表示進度條的寬度。例如30表示總長度為30個字元
+ *  totalProgress 表示總共需要工作的次數
+ *  currentProgress 表示當前工作的次數
+ *  progressBarWidth 表示進度條的寬度。例如30表示總長度為30個字元
  */
 #ifdef _PROCESSBAR
-inline void progresBar(int total, int current, int width) {
+inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime) {
+    
+	static time_t lastTime = 0;
 
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    GetConsoleScreenBufferInfo(hConsole, &consoleInfo); // 獲取標準輸出設備的屬性
-    // 計算進度條填充的寬度和百分比
-    float percent = (float)current / (float)total;
-    int filled_width = (int)(percent * width);
+    // 如果 current 等於 total，則強制更新進度條為100%
+    if (currentProgress == totalProgress) {
+        printf("[");
+        for (int i = 0; i < progressBarWidth; i++) {
+            printf("#");
+        }
+        printf("] 100%%");
+        fflush(stdout);
+        return;
+    }
+
+    // 檢查時間間隔是否符合要求，調整更新頻率用
+    if ((time(NULL) - lastTime) < updateTime) {
+        return;
+    }
+	
+    assert(totalProgress > 0 && "Error: total must be positive.");
+    assert(currentProgress <= totalProgress && "Error: current value cannot be greater than total value.");
+    assert(progressBarWidth > 0 && "Error: progress bar width must be positive.");
+	
+	// 計算進度條填充的寬度和百分比
+    float percent = (float)currentProgress / (float)totalProgress;
+    int filled_width = (int)(percent * progressBarWidth);
     int i;
 
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的Handle
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo); // 獲取標準輸出設備的屬性
     SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+
     printf("[");
     for (i = 0; i < filled_width; i++) {
         printf("#");
     }
-    for (i = filled_width; i < width; i++) {
+    for (i = filled_width; i < progressBarWidth; i++) {
         printf(".");
     }
-    printf("] %.1f%%\r", percent*100);
+    //printf("] %.1f%%\r", percent*100);
+    printf("] %i%\r", (int)(percent*100));
     fflush(stdout);
+
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+	lastTime = time(NULL);
 }
 #endif
 

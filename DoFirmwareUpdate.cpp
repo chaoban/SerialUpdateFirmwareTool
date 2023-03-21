@@ -542,7 +542,7 @@ bool sis_clear_bootflag(QSerialPort* serial)
 
         for (i = 0; i < pack_num; i++) {
 #ifdef _PROCESSBAR
-            progresBar(pack_num, i + 1, progresWidth); // 列印進度條
+            progresBar(pack_num, i + 1, progresWidth, 1); // 列印進度條
 #endif
             size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
             ret = sisWriteDataCmd(serial, tmpbuf, size_84);
@@ -627,7 +627,7 @@ static bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr,
 #ifdef _PROCESSBAR
                 // 這邊每次做的都是一個RAM_SIZE的大小的寫入
                 // 例如12K，每筆52Bytes，共需要237次(pack_num)
-                progresBar(total_pack, pack_base + i + 1, progresWidth); /* 列印進度條 */
+                progresBar(total_pack, pack_base + i + 1, progresWidth, 1); /* 列印進度條 */
 #endif
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
