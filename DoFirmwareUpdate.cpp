@@ -13,6 +13,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
+#include <stdio.h>
 #include "delay.h"
 #include "DoFirmwareUpdate.h"
 #include "sis_command.h"
@@ -23,6 +24,7 @@ extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 /*
  * Serial Write Commands
+ * Return 0 = OK, others failed
  */
 int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 {
@@ -50,16 +52,16 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     if (bytesWritten == -1) {
         standardOutput << QObject::tr("Failed to send the command to port %1, error: %2")
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = SIS_ERR;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     } else if (bytesWritten != writeData.size()) {
         standardOutput << QObject::tr("Failed to send all the command to port %1, error: %2")
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = SIS_ERR;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     } else if (!serial->waitForBytesWritten(5000)) {
         standardOutput << QObject::tr("Operation timed out or an error "
                                       "occurred for port %1, error: %2")
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = SIS_ERR;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
     //qDebug() << "bytesWritten=" << bytesWritten;
 
@@ -68,6 +70,7 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 
 /*
  * Serial Read Commands
+ * Return 0 = OK, others failed
  */
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
@@ -76,7 +79,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 
     if(!serial->waitForReadyRead(-1)) { //block until new data arrives
         qDebug() << "error: " << serial->errorString();
-        ret = SIS_ERR;//-1
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
     else {
         qDebug() << "New data available: " << serial->bytesAvailable();
@@ -230,6 +233,7 @@ enum SIS_817_POWER_MODE sis_get_fw_mode()
 /* 
  * Boot flag: 0x50 0x38 0x31 0x30
  * Address: 0x1eff0 - 0x1eff3
+ * Return 0 = OK, others failed
 */
 int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
 {
@@ -288,10 +292,11 @@ bool sisGetFwId(QSerialPort* serial, quint16 *fw_version)
  * 12   :   Resverse
  * 13   :   Type
  * 14-15:   FW Version
+ * Return 0 = OK, others failed
 */
 int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 {
-    int ret = 0;
+    int ret = EXIT_OK;
     int rlength = READ_SIZE;
     uint8_t R_SIZE_LSB = rlength & 0xff;
     uint8_t R_SIZE_MSB = (rlength >> 8) & 0xff;
@@ -383,7 +388,7 @@ int sisResetCmd(QSerialPort* serial)
  */
 bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 {
-    int ret = 0;
+    int ret = EXIT_OK;
     uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
 
     //printf("sisUpdateCmd()\n");
@@ -605,7 +610,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
     {
         size_83 = end > (count_83 + RAM_SIZE)? RAM_SIZE : (end - count_83);
 #if 0        
-        printf("sisUpdateBlock size83 = %d, count_83 = %d\n", size_83, count_83);
+        printf("SiSUpdateBlock size83 = %d, count_83 = %d\n", size_83, count_83);
 #endif
         /* pack_num = 79, 158, or 237 */
         pack_num = ((size_83 + PACK_SIZE - 1) / PACK_SIZE);
@@ -627,11 +632,11 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
 #ifdef _PROCESSBAR
                 // 這邊每次做的都是一個RAM_SIZE的大小的寫入
                 // 例如12K，每筆52Bytes，共需要237次(pack_num)
-                progresBar(total_pack, pack_base + i + 1, progresWidth, 1); /* 列印進度條 */
+                progresBar(total_pack, pack_base + i + 1, progresWidth, 2); /* 列印進度條 */
 #endif
                 size_84 = (count_83 + size_83) > (count_84 + PACK_SIZE) ? PACK_SIZE : (count_83 + size_83 - count_84);
 #if 0
-                printf("sisUpdateBlock size84 = %d, count_84 = %d\n", size_84, count_84);
+                printf("SiSUpdateBlock size84 = %d, count_84 = %d\n", size_84, count_84);
 #endif
                 ret = sisWriteDataCmd(serial, data + count_84, size_84);
                 if (ret)
@@ -665,7 +670,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
         pack_base += pack_num;
 #endif
         if (count_83 == count_84) {
-            //printf("sis count_83 == count_84.\n");
+            //printf("SiS count_83 == count_84.\n");
         }
     }
 #ifdef _PROCESSBAR
@@ -779,7 +784,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 
     /* Reset */
 #if 1
-    printf("Reset SIS Device\n");
+    printf("Reset SiS Device\n");
     ret = sisResetCmd(serial);
     if (ret) {
         printf("sis RESET failed %d\n", ret);
@@ -792,15 +797,15 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 
 bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, quint32 *bootloader_crc)
 {
-    int ret = 0;
+    int ret = EXIT_OK;
     //int i=0;
     uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID,
         0x00, CMD_SISREAD, 0x30, 0x02, 0x00, 0xa0, 0x34, 0x00};
     sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
 
     ret = sisCmdTx(serial, sizeof(sis_cmd_get_bootloader_id_crc), sis_cmd_get_bootloader_id_crc);
-    if (ret < 0) {
-        printf("sis SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
+    if (ret != EXIT_OK) {
+        printf("SiS SEND Get Bootloader ID CMD Failed - 86 %d\n", ret);
         return false;
     }
 
@@ -855,15 +860,17 @@ int sisUpdateFlow(QSerialPort* serial,
     quint32 bootflag = 0x00000000;
     quint32 bin_bootflag = 0x00000000;
     int ret = -1;
+	bool bRet = true;
 
     /*
      * Switch FW Mode
      */
 #if 1
     printf("Switch Firmware Mode\n");
-    if (!sisSwitchCmdMode(serial)) {
+	bRet = sisSwitchCmdMode(serial);
+    if (bRet == false) {
         qDebug() << "Error: sisSwitchCmdMode Fails";
-        return EXIT_ERR;
+        return CT_EXIT_AP_FLOW_ERROR;
     }
 #else
     printf("Temporarily canceled Switch FW Mode\n");
@@ -876,7 +883,7 @@ int sisUpdateFlow(QSerialPort* serial,
     printf("Get Firmware Information\n");
     ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
-        printf("sis get fw info failed %d\n", ret);
+        printf("SiS get fw info failed. Error code: %d\n", ret);
     }
 #else
     printf("Temporarily canceled Get FW Information\n");
@@ -915,7 +922,7 @@ int sisUpdateFlow(QSerialPort* serial,
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
         if (!bjump_check) {
             printf("Firmware info not match, stop update firmware\n");
-            return EXIT_FAIL;
+            return CT_EXIT_FAIL;
         } else { 
             printf("Firmware info not match, but jump parameter validation. Update process go on\n");
         }
@@ -928,13 +935,12 @@ int sisUpdateFlow(QSerialPort* serial,
 
     /*
      * Get BootFlag
-     * sisGetBootflag()
      */
 #if 1
     printf("Get BootFlag\n");
     ret = sisGetBootflag(serial, &bootflag);
     if (ret) {
-        printf("sis get bootflag failed, Error code: %d\n", ret);
+        printf("SiS get bootflag failed, Error code: %d\n", ret);
     }
 #else
     printf("Temporarily canceled get bootflag\n");
@@ -953,7 +959,7 @@ int sisUpdateFlow(QSerialPort* serial,
     } else {
         if (!bjump_check) {
             printf("Firmware Binary file broken, stop update process!!\n");
-            return EXIT_FAIL;
+            return CT_EXIT_FAIL;
         } else {
             SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
             printf("Firmware info not match, but jump parameter validation. Update process go on\n");
@@ -978,9 +984,9 @@ int sisUpdateFlow(QSerialPort* serial,
      */
 #if 1
     printf("Get Bootloader ID and Bootloader CRC\n");
-    ret = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
-    if (ret) {
-        printf("SiS get bootloader ID or CRC fail. Error code: %d\n", ret);
+    bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
+    if (bRet == false) {
+        printf("SiS get bootloader ID or CRC failed\n");
     }
 #else
     printf("Temporarily canceled Get Bootloader ID and Bootloader CRC\n");
@@ -1054,24 +1060,27 @@ int sisUpdateFlow(QSerialPort* serial,
         //firmware_id = bin_fw_version;
      }
      else if (bin_fw_version > 0xabff) {
-        printf("Unavilable Firmware version.\n");
+        printf("Unavilable Firmware version\n");
      }
      else {
-        printf("Current Firmware version is same or later than bin.\n");
+        printf("Current Firmware version is same or later than bin\n");
      }
 
-    return EXIT_OK;
+    return CT_EXIT_PASS;
 }
 
+/*
+ * Return 0 = OK, others faled
+ */
 int verifyRxData(uint8_t *buffer)
 {
     int ret = EXIT_OK;
     if (buffer[BUF_ACK_LSB] == BUF_NACK_L && buffer[BUF_ACK_MSB] == BUF_NACK_H) {
         printf("Return NACK\n");
-        ret = EXIT_FAIL;
+        ret = CT_EXIT_FAIL;
     } else if ((buffer[BUF_ACK_LSB] != BUF_ACK_L) || (buffer[BUF_ACK_MSB] != BUF_ACK_H)) {
         printf("Return Unknow\n");
-        ret = EXIT_ERR;
+        ret = CT_EXIT_FAIL;
     }
 
     return ret;

@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     for (int i = 1; i < argc; i++) {
         if (!handle_input(argv[i])) {
             print_sep();
-            return EXIT_ERR;
+            return EXIT_BADARGU;
         }
         /* 跳過對檔案名稱和Serial port的檢查，避免當成不合法參數 */
         if ((strcmp(argv[i], "-f" ) == 0) ||
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
     }
     else {
         printf("Do not have Open any serial port, please see the HELP\n");
-        return EXIT_ERR;
+        return CT_EXIT_NO_COMPORT;
     }
 
     /*
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
     FILE* fp = fopen(filename.toStdString().c_str(), "rb");
     if (!fp) {
         printf("Failed to open the file: %s \n", filename.toStdString().c_str());
-        return 1;
+        return EXIT_BADARGU;
     }
 
     printf("Open the file: %s success\n", filename.toStdString().c_str());
@@ -268,11 +268,11 @@ int main(int argc, char *argv[])
 
     if ((sis_fw_data = (quint8*)malloc(sizeof(quint8) * file_size)) == NULL) {
         printf("Failed to allocate memory\n");
-        return 1;
+        return EXIT_ERR;
     }
     if (fread(sis_fw_data, sizeof(char), (size_t)file_size, fp) != (size_t)file_size) {
         printf("Failed to read file\n");
-        return 1;
+        return EXIT_ERR;
     }
     fclose(fp);
 #else

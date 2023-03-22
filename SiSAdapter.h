@@ -66,7 +66,7 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
 
     // 如果 current 等於 total，則強制更新進度條為100%
     // 避免因為更新頻率的關係導致沒有顯示完整100%
-    if (currentProgress == totalProgress) {
+    if (currentProgress >= totalProgress) {
         printf("[");
         for (int i = 0; i < progressBarWidth; i++) {
             printf("#");
