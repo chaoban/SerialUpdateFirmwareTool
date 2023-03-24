@@ -161,9 +161,7 @@ bool sisSwitchCmdMode(QSerialPort* serial)
         return false;
     }
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
-	//return true;
-#else
+#ifndef _DBG_DISABLE_READCMD
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
         printf("SiS READ Switch CMD Failed - 85(ENABLE_DIAGNOSIS_MODE), Error code: %d\n", ret);
@@ -252,9 +250,7 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
         return ret;
     }
 
-#ifdef _DBG_DISABLE_READCMD
-	ret = EXIT_OK;
-#else
+#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -324,9 +320,7 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
     }
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
-	ret = EXIT_OK;
-#else
+#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -439,7 +433,7 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
     quint8 *sis817_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
 
     if (!sis817_cmd_84) {
-        printf("SiS alloc buffer error.\n");
+        printf("SiS alloc buffer error\n");
         return false;
     }
 
@@ -526,7 +520,7 @@ bool sisClearBootflag(QSerialPort* serial)
 	
     tmpbuf = (unsigned char*) malloc(64 * sizeof(unsigned char));
     if (tmpbuf == NULL) {
-        printf("Failed to allocate memory.\n");
+        printf("Failed to allocate memory\n");
         return false;
     }
 
@@ -568,7 +562,7 @@ bool sisClearBootflag(QSerialPort* serial)
         printf("\n"); // 進度條完成後換行用
 #endif
 		if (ret == false) {
-			printf("SiS Write FW payload (0x84) error.\n");
+			printf("SiS Write FW payload (0x84) error\n");
 			continue;
 		}
 
@@ -588,7 +582,7 @@ bool sisClearBootflag(QSerialPort* serial)
 
 	free(tmpbuf);
 	if (ret == false) {
-		printf("Retry timeout.\n");
+		printf("Retry timeout\n");
 		return ret;
 	}
     return true;
@@ -673,7 +667,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
         }
 		
         if (ret == false) {
-            printf("Retry timeout.\n");
+            printf("Retry timeout\n");
             return false;
         }
 
@@ -707,7 +701,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("Clear Boot flag ...\n");
     ret = sisClearBootflag(serial);
     if (ret == false) {
-        printf("SiS update firmware failed at Clear Boot Flag.\n");
+        printf("SiS update firmware failed at Clear Boot Flag\n");
         return ret;
     }
 
@@ -717,7 +711,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("Update Main Code Section 1 ...\n");
     ret = sisUpdateBlock(serial, fn, 0x00007000, 0x00016000);
     if (ret == false) {
-        printf("SiS update firmware fail at Main Code Section 1 ... \n");
+        printf("SiS update firmware fail at Main Code Section 1\n");
         return ret;
     }
 
@@ -728,7 +722,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("Update Main Code Section 2 ...\n");
     ret = sisUpdateBlock(serial, fn, 0x00006000, 0x00001000);
     if (ret == false) {
-        printf("SiS update firmware fail at Main Code Section 2 ... \n");
+        printf("SiS update firmware fail at Main Code Section 2\n");
         return ret;
     }
 #endif
@@ -749,11 +743,11 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      *     ADDRESS: 0x0, Length=0x4000
      *     (Notes: if need update bootloader)
      */
-    if (bUpdateBootloader) {
+    if ( bUpdateBootloader ) {
         printf("Update Boot loader ...\n");
         ret = sisUpdateBlock(serial, fn, 0x00000000, 0x00004000);
 	    if (ret == false) {
-            printf("SiS update firmware fail at Boot loader ...\n");
+            printf("SiS update firmware fail at Boot loader\n");
             return ret;
 	    }
     }
@@ -765,7 +759,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("Update Rodata and Boot Flag ...\n");
     ret = sisUpdateBlock(serial, fn, 0x0001d000, 0x00002000);
     if (ret == false) {
-        printf("SiS update firmware fail at Rodata and Boot Flag.\n");
+        printf("SiS update firmware fail at Rodata and Boot Flag\n");
         return ret;
     }
 #endif
@@ -777,7 +771,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("Burn Boot Flag ...\n");
     ret = sisUpdateBlock(serial, fn, 0x0001e000, 0x00001000);
     if (ret == false) {
-        printf("SiS update firmware fail at Boot Flag.\n");
+        printf("SiS update firmware fail at Boot Flag\n");
         return ret;
     }
 #endif
@@ -789,21 +783,21 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     printf("FOR TEST AND VERIFY ...\n");
     ret = sisUpdateBlock(serial, fn, 0x00000000, 0x0001F000);
     if (ret == false) {
-        printf("Chaoban TEST AND VERIFY in burningCode().\n");
+        printf("Chaoban TEST AND VERIFY in burningCode()\n");
         return ret;
     }
 #endif
 
     /* Reset */
 #if 1
-    printf("Reset SiS Device ...\n");
+    printf("Reset SiS Device\n");
     ret = sisResetCmd(serial);
     if (ret == false) {
         printf("SiS Reset device failed %d\n", ret);
         return ret;
     }
 #else
-    printf("Temporarily canceled Reset SIS Device.\n");
+    printf("Temporarily canceled Reset SIS Device\n");
 #endif
     return ret;
 }
@@ -822,9 +816,7 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
         return false;
     }
 
-#ifdef _DBG_DISABLE_READCMD
-	//return true;
-#else
+#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -851,7 +843,7 @@ int sisUpdateFlow(QSerialPort* serial,
                   bool bUpdateBootloader,
                   bool bUpdateBootloader_auto,
 				  bool bForceUpdate, 
-				  bool bJump)
+				  bool bjump_check)
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -881,30 +873,29 @@ int sisUpdateFlow(QSerialPort* serial,
      * Switch FW Mode
      */
 #if 1
-    printf("Switch Firmware Mode.\n");
+    printf("Switch Firmware Mode\n");
 	bRet = sisSwitchCmdMode(serial);
     if (bRet == false) {
         qDebug() << "Error: sisSwitchCmdMode Fails";
-        return CT_EXIT_FAIL;
+        return CT_EXIT_AP_FLOW_ERROR;
     }
 #else
-    printf("Temporarily canceled Switch FW Mode.\n");
+    printf("Temporarily canceled Switch FW Mode\n");
 #endif
     /*
-     * Get FW Information
+     * Get FW Information and Check FW Info
+     * sisGetFwInfo
      */
 #if 1
-    printf("Get Firmware Information.\n");
+    printf("Get Firmware Information\n");
     ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
         printf("SiS get fw info failed. Error code: %d\n", ret);
-		return ret;
     }
 #else
-    printf("Temporarily canceled Get FW Information.\n");
+    printf("Temporarily canceled Get FW Information\n");
 #endif
 
-#if 1
     //TODO: 確認這些ADDRESS5正確否
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
@@ -924,31 +915,27 @@ int sisUpdateFlow(QSerialPort* serial,
     bin_chip_type = sis_fw_data[0x400d];
     printf("  sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
 
-    //fw version Major and small version
+    //fw version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
     printf("  sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
-#endif
+
     /*
      * Check FW Info
      */
-	if((chip_id != bin_chip_id) ||
+     if ((chip_id != bin_chip_id) ||
         (tp_vendor_id != bin_tp_vendor_id) ||
         (task_id != bin_task_id) ||
-        (chip_type != bin_chip_type)) 
-	{
-		if (bJump == true) {
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
-			printf("Firmware info not match, but jump parameter validation. Update process go on.\n");
-			SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-		} else {
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
-			printf("Firmware info not match, stop update firmware process.\n");
-			SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-			return CT_EXIT_AP_FLOW_ERROR;
-		}
-    }else {
-		printf("Check Firmware Info Success.\n");
-	}	
+        (chip_type != bin_chip_type)) {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+        if (!bjump_check) {
+            printf("Firmware info not match, stop update firmware\n");
+            return CT_EXIT_FAIL;
+        } else { 
+            printf("Firmware info not match, but jump parameter validation. Update process go on\n");
+        }
+        SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+      } else
+        printf("Check Firmware Info Success\n");
 
       //chaoban test marked
       //msleep(2000);
@@ -957,14 +944,13 @@ int sisUpdateFlow(QSerialPort* serial,
      * Get BootFlag
      */
 #if 1
-    printf("Get BootFlag.\n");
+    printf("Get BootFlag\n");
     ret = sisGetBootflag(serial, &bootflag);
     if (ret) {
         printf("SiS get bootflag failed, Error code: %d\n", ret);
-		return ret;
     }
 #else
-    printf("Temporarily canceled get bootflag.\n");
+    printf("Temporarily canceled get bootflag\n");
 #endif
 
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
@@ -976,17 +962,24 @@ int sisUpdateFlow(QSerialPort* serial,
      * Value: 0x50 0x38 0x31 0x30
      */
     if (bin_bootflag == SIS_BOOTFLAG_P810) {
-        printf("Check BootFlag of binary file is successfully.\n");
+        printf("Check BootFlag success\n");
     } else {
-        printf("Firmware Binary file broken, stop update firmeare process.\n");
-        return CT_EXIT_FAIL;
+        if (!bjump_check) {
+            printf("Firmware Binary file broken, stop update process!!\n");
+            return CT_EXIT_FAIL;
+        } else {
+            SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+            printf("Firmware info not match, but jump parameter validation. Update process go on\n");
+            SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+        }
     }
 
     if (bootflag != SIS_BOOTFLAG_P810) {
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
-        printf("Firmware of device is broken, force update.\n");
+        printf("Firmware broken, force update it\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         bForceUpdate = true;
+		
     }
 
     //msleep(2000);
@@ -997,63 +990,53 @@ int sisUpdateFlow(QSerialPort* serial,
      * sisGetBootloaderId_Crc
      */
 #if 1
-    printf("Get Bootloader ID and Bootloader CRC.\n");
+    printf("Get Bootloader ID and Bootloader CRC\n");
     bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (bRet == false) {
-        printf("SiS get bootloader ID or CRC failed.\n");
-		return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+        printf("SiS get bootloader ID or CRC fail\n");
     }
 #else
-    printf("Temporarily canceled Get Bootloader ID and Bootloader CRC.\n");
+    printf("Temporarily canceled Get Bootloader ID and Bootloader CRC\n");
 #endif
 
     /*
      * Check Bootloader ID and Bootloader CRC
      */
 #if 1
-    printf("Check Bootloader ID and Bootloader CRC.\n");
+    printf("Check Bootloader ID and Bootloader CRC\n");
 
     //bootloader id
     bin_bootloader_version = (sis_fw_data[0x230] << 24) | (sis_fw_data[0x231] << 16) | (sis_fw_data[0x232] << 8) | (sis_fw_data[0x233]);
-    printf("  sis bootloader id = %08x, bin = %08x.\n", bootloader_version, bin_bootloader_version);
+    printf("  sis bootloader id = %08x, bin = %08x\n", bootloader_version, bin_bootloader_version);
 
     //bootloader crc
     bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
-    printf("  sis bootloader crc = %08x, bin = %08x.\n", bootloader_crc_version, bin_bootloader_crc_version);
+    printf("  sis bootloader crc = %08x, bin = %08x\n", bootloader_crc_version, bin_bootloader_crc_version);
 
-    if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) 
-	{
+    if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) {
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
 		printf("Differences have been found in Bootloader, ");
         if (bUpdateBootloader_auto == true)
         {
             bUpdateBootloader = true;
-            printf("and will update Bootloader.\n");
-			//TODO
-			// if(bUpdateParameter == true) {
-            //    printf("Disable only update parameters\n");
-            //    bUpdateParameter = false;
-            //}
+            printf("and will update Bootloader\n");
         } else {
 			if (bUpdateBootloader == true) {
 				printf("and we also set to update Bootloader\n");
-			} else {
-				printf("but No update Bootloader.\n");
-				printf("Please update with -b parameter.\n");
-				return CT_EXIT_AP_FLOW_ERROR;
-			}
+			} else
+				printf("but No update Bootloader\n");
         }
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
     }
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
-		printf("bin_fw_version 0xff00 = 0xab00, force update it.\n");
+		printf("bin_fw_version 0xff00 = 0xab00, force update it\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         bForceUpdate = true;
     }
 #else
-    printf("Temporarily canceled Check Bootloader ID and Bootloader CRC.\n");
+    printf("Temporarily canceled Check Bootloader ID and Bootloader CRC\n");
 #endif
 
     /*
@@ -1062,15 +1045,14 @@ int sisUpdateFlow(QSerialPort* serial,
      */
 
     if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
-            || (bForceUpdate == true)) 
-	{ 
+            || bForceUpdate == true) { 
         //Special Update Flag : Update by serial port tool
         sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
         sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
 
         // TODO: Add time stamp in sis_fw_data[]
         int timeStamp = getTimestamp();
-        printf("Time Stamp: %08x.\n", timeStamp);
+        printf("Time Stamp: %08x\n", timeStamp);
 
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
         printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
@@ -1082,16 +1064,16 @@ int sisUpdateFlow(QSerialPort* serial,
 			//SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
             //printf("SiS Update Firmware failed\n");
 			//SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-            return CT_EXIT_AP_FLOW_ERROR;
+            return EXIT_ERR;
         }
         //firmware_id = bin_fw_version;
-    }
-    else if (bin_fw_version > 0xabff) {
-		printf("Unavilable Firmware version.\n");
-    }
-    else {
-		printf("Current Firmware version is same or later than bin.\n");
-    }
+     }
+     else if (bin_fw_version > 0xabff) {
+        printf("Unavilable Firmware version\n");
+     }
+     else {
+        printf("Current Firmware version is same or later than bin\n");
+     }
 
     return CT_EXIT_PASS;
 }

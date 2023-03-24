@@ -22,6 +22,7 @@ HEADERS += \
     ExitStatus.h \
     SiSAdapter.h \
     delay.h \
+    parseArgu.h \
     sis_command.h \
     version.h
 
