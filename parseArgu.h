@@ -31,17 +31,17 @@ typedef struct {
 } args_t;
 
 arg_t args[] = {
+	{"-h",       "Display this help information."},
     {"Input file ",	"Load the Binary firmware's name."},
-    {"comX",     "Specify updating firmware through serial comX port. (X=1, 2, 3...) Such as com3."},
+    {"comX",     "Specify updating firmware through serial comX port. (X=1, 2, 3...) Such as com3.\n"},
+	{"--force",  "Force update firmware without considering version."},
+	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."},
     {"-a",       "Automatically detect the serial port connected to the SiS device for firmware update."},
     {"-b",       "Update the bootloader."},
     {"-ba",      "Update bootloader automatically."},
     {"-nc",      "No need to confirm whether to update. Default is need to confirm."},
     {"-d",       "Dump firmware information of the device."},
-    {"--force",  "Force update firmware without considering version."},
-    {"-h",       "Display this help information."},
-    {"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."},
-	{"-l",		 "Display the information in the firmware binary file."},
+	{"-l",		 "Display the information of the firmware binary file."},
     {"-p",       "Only update parameter."},
     {"-r",       "Reserve RO data."},
     {"-s",       "Scan and list all available serial ports in the host."},
@@ -140,7 +140,7 @@ int process_args(int argc, char *argv[], args_t* param) {
                 return -1;
             }
         }
-        else if(strcmp(argv[i], "com1") == 0 ||
+        else if(strcmp(argv[i], "com1") == 0 || // TODO: 需要優化，判斷COM後再抓後面數字即可
             strcmp(argv[i], "com2") == 0 ||
             strcmp(argv[i], "com3") == 0 ||
             strcmp(argv[i], "com4") == 0 ||

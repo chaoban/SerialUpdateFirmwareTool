@@ -79,8 +79,9 @@ int main(int argc, char *argv[])
     }
 	if(param.l) {
         //TODO
-		printf("Firmware Information in the Binary file:\n");
-        return EXIT_OK;
+        printf("Display Firmware Information of the Binary file:\n");
+        bList = true;
+        //return EXIT_OK;
     }
     // 帶有掃描serial port時，掃描及列出後，不再繼續執行
     if(param.s) {

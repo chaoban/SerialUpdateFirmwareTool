@@ -107,11 +107,11 @@ bool sisSwitchCmdMode(QSerialPort* serial)
 {
     int ret = EXIT_OK;
     uint8_t tmpbuf[MAX_BYTE] = {0};
-    uint8_t sis817_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 
+    uint8_t sis_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 
                                                0x00/*CRC16*/, 
                                                CMD_SISXMODE, 
                                                0x51, 0x09};
-    uint8_t sis817_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 
+    uint8_t sis_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 
                                                          0x00/*CRC16*/, 
                                                          CMD_SISXMODE, 
                                                          0x21, 0x01};
@@ -123,13 +123,13 @@ bool sisSwitchCmdMode(QSerialPort* serial)
  * 以Change mode為例:
  * [0x09, CRC, 0x85, 0x51, 0x09]
  */
-    sis817_cmd_active[BIT_CRC] = sis_Calculate_Output_Crc( sis817_cmd_active, sizeof(sis817_cmd_active) );
-    sis817_cmd_enable_diagnosis[BIT_CRC] = sis_Calculate_Output_Crc( sis817_cmd_enable_diagnosis, sizeof(sis817_cmd_enable_diagnosis) );
-    //printf("CRC=%x\n", sis817_cmd_active[BIT_CRC]);
-    //printf("CRC=%x\n", sis817_cmd_enable_diagnosis[BIT_CRC]);
+    sis_cmd_active[BIT_CRC] = sis_Calculate_Output_Crc( sis_cmd_active, sizeof(sis_cmd_active) );
+    sis_cmd_enable_diagnosis[BIT_CRC] = sis_Calculate_Output_Crc( sis_cmd_enable_diagnosis, sizeof(sis_cmd_enable_diagnosis) );
+    //printf("CRC=%x\n", sis_cmd_active[BIT_CRC]);
+    //printf("CRC=%x\n", sis_cmd_enable_diagnosis[BIT_CRC]);
 
     //Send 85 CMD - PWR_CMD_ACTIVE
-    ret = sisCmdTx(serial, sizeof(sis817_cmd_active), sis817_cmd_active);
+    ret = sisCmdTx(serial, sizeof(sis_cmd_active), sis_cmd_active);
     if (ret != EXIT_OK) {
         printf("SiS SEND Switch CMD Failed - 85(PWR_CMD_ACTIVE), Error code: %d\n", ret);
         return false;
@@ -155,7 +155,7 @@ bool sisSwitchCmdMode(QSerialPort* serial)
 
     memset(tmpbuf, 0, sizeof(tmpbuf));
     //Send 85 CMD - ENABLE_DIAGNOSIS_MODE
-    ret = sisCmdTx(serial, sizeof(sis817_cmd_enable_diagnosis), sis817_cmd_enable_diagnosis);
+    ret = sisCmdTx(serial, sizeof(sis_cmd_enable_diagnosis), sis_cmd_enable_diagnosis);
     if (ret != EXIT_OK) {
         printf("SiS SEND Switch CMD Failed - 85(ENABLE_DIAGNOSIS_MODE), Error code: %d\n", ret);
         return false;
@@ -396,12 +396,12 @@ bool sisResetCmd(QSerialPort* serial)
 bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 {
     int ret = EXIT_OK;
-    uint8_t sis817_cmd_83[CMD_SZ_UPDATE] = {0};
+    uint8_t sis_cmd_83[CMD_SZ_UPDATE] = {0};
 
     //printf("SiSUpdateCmd()\n");
-    sis_Make_83_Buffer(sis817_cmd_83, addr, pack_num);
+    sis_Make_83_Buffer(sis_cmd_83, addr, pack_num);
 	
-    ret = sisCmdTx(serial, sizeof(sis817_cmd_83), sis817_cmd_83);
+    ret = sisCmdTx(serial, sizeof(sis_cmd_83), sis_cmd_83);
 	if (ret != EXIT_OK) {
         printf("SiS Update CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return false;
@@ -436,16 +436,16 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
     //printf("SiSWriteDataCmd()\n");
     int ret = EXIT_OK;
     quint8 len = BIT_PALD + count;
-    quint8 *sis817_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
+    quint8 *sis_cmd_84 = (quint8 *)malloc(len * sizeof(quint8));
 
-    if (!sis817_cmd_84) {
+    if (!sis_cmd_84) {
         printf("SiS alloc buffer error.\n");
         return false;
     }
 
-    sis_Make_84_Buffer(sis817_cmd_84, val, count);
+    sis_Make_84_Buffer(sis_cmd_84, val, count);
 
-    ret = sisCmdTx(serial, len, sis817_cmd_84);
+    ret = sisCmdTx(serial, len, sis_cmd_84);
     if (ret != EXIT_OK) {
         printf("SiS SEND write CMD Failed - 84(WRI_FW_DATA_PAYL) %d\n", ret);
         return false;
@@ -468,7 +468,7 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
     }
 #endif
 
-    free(sis817_cmd_84);
+    free(sis_cmd_84);
     return true;
 }
 
@@ -1073,7 +1073,7 @@ int sisUpdateFlow(QSerialPort* serial,
         printf("Time Stamp: %08x.\n", timeStamp);
 
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-        printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT!!\n");
+        printf("\x1b[1mSTART FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT.\x1b[0m\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
         bRet = burningCode(serial, sis_fw_data, bUpdateBootloader);
