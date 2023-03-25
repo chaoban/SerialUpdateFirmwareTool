@@ -7,7 +7,7 @@
 
 //#define _CHAOBAN_TEST               1
 #define _DBG_DISABLE_READCMD        1
-#define _PROCESSBAR                 1
+#define PROCESSBAR                 1
 
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
@@ -20,7 +20,7 @@ enum SIS_817_POWER_MODE sis_get_fw_mode();
 struct firmwareMap {
     struct {
         unsigned int sourceTag; 		//0x0200, 6 bytes, 7501A is "virgo", 0x76 69 72 67 6f 00
-        unsigned int releaseTime;			//0X0206, 6 bytes, YYYYMMDDhhmm, 20 22 12 19 18 00
+        unsigned int releaseTime;		//0X0206, 6 bytes, YYYYMMDDhhmm, 20 22 12 19 18 00
         unsigned int mark;				//0x020c, 4 bytes, "SiS", 0x00 53 69 53
 		unsigned int codeTag;			//0x0220, 4 bytes, V020700, 0x56 02 07 00
 		unsigned int version;			//0x0230, 4 bytes, 1.05版, 0x00 01 00 05

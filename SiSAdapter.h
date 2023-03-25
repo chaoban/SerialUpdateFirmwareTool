@@ -2,13 +2,13 @@
 #define SISADAPTER_H
 #include <stdio.h>
 #include <string.h>
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
 #include <time.h>
 #endif
 
 int getTimestamp();
 void print_sep();
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime);
 #endif
 
@@ -59,7 +59,7 @@ enum
  *  progressBarWidth 表示進度條的寬度。例如30表示總長度為30個字元
  *  updateTime 表示更新頻率，單位為秒
  */
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime) {
     
     static time_t lastTime = 0; // 調整更新頻率用

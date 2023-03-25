@@ -23,83 +23,28 @@ int testSerialPort(QString *ComPortName);
 int openBinary(QString path);
 int getFirmwareInfo(quint8 *sis_fw_data);
 int verifyFirmwareInfo(quint8 *sis_fw_data);
+int occupiedPortCount = 0;
+int timeOutPortCount = 0;
+bool mismatchKey = FALSE;
 void getUserInput();
 extern void print_sep();
 extern int scanSerialport();
 extern int getTimestamp();
 
-int occupiedPortCount = 0;
-int timeOutPortCount = 0;
-bool mismatchKey = FALSE;
-
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
 QByteArray FirmwareString = "";
-
+/* 建立FW資訊用 */
 firmwareMap binaryMap;
-
-#define BAN_0322    1
-
-#ifndef BAN_0322
-/* 參數訊息列表 */
-struct input_handler {
-    const char *arg_name;  // 參數名稱
-    const char *msg;       // 對應的訊息
-};
-struct input_handler handlers[11] = {
-    {"-b",      "Update the bootloader"},
-    {"--force", "Force firmware update without considering version"},
-    {"-s",      "Scan and list all available serial ports"},
-    {"-f",      "Firmware file name\n            Usage: -f [filename]"},
-    {"--jump",  "Jump parameter validation"},
-    {"-c",      "Specify updating firmware through which serial port\n            Usage: -c [Serial port number], such as com3"},
-    {"-ba",     "Update bootloader automatically"},
-    {"-g",      "Reserve RO data"},
-    {"-r",      "Only update parameter"},
-//    {"-w",      "Wait time set"},
-    {"-a",      "Automatically detect the serial port connected to the SiS device for firmware update"},
-    {"-h",      "Show Help"}
-};
-
-void showHelp() {
-    printf("\n");
-    for (unsigned int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
-        printf("%-10s: %s\n", handlers[i].arg_name, handlers[i].msg);
-    }
-}
-
-bool handle_input(char *arg) {
-    int found = 0;
-    bool ret = true;
-    for (unsigned int i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++) {
-        if (strcmp(handlers[i].arg_name, arg) == 0) {
-            //printf("%s\n", handlers[i].msg);
-            found = 1;
-            break;
-        }
-    }
-    if (!found) {
-        printf("Unknow Command Arguments: %s\n", arg);
-        printf("You can use HELP to see the Command Arguments List.\n");
-        //showHelp();
-        ret = false;
-    }
-    return ret;
-}
-#endif
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-#ifndef BAN_0322
-    const int argumentCount = QCoreApplication::arguments().size();
-#endif
     const QStringList argumentList = QCoreApplication::arguments();
     QTextStream standardOutput(stdout);
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
     GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-
     QString filename = "";
     QString ComPortName = "";
     QSerialPort serial; /* 開啟Serial Port用 */
@@ -110,11 +55,11 @@ int main(int argc, char *argv[])
     bool bDump = false;
     bool bForceUpdate = false;
     bool bJump = false;
+	bool bList = false;
     bool bUpdateParameter = false;
     bool bReserveRODATA = false;
     bool bWaitTime = false;
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
-#ifdef BAN_0322
     /*
      * 處理輸入的參數
      * 沒有接參數的時候，顯示(Help)指令說明
@@ -122,14 +67,19 @@ int main(int argc, char *argv[])
     int ret = process_args(argc, argv, &param);
     if(ret != EXIT_OK)
         return EXIT_BADARGU;
-
+	
     // 帶有Help參數時，顯示參數說明，然後不再繼續執行
     if(param.h) {
         print_help();
         return EXIT_OK;
     }
-    if(param.v) {
+	if(param.v) {
         printVersion();
+        return EXIT_OK;
+    }
+	if(param.l) {
+        //TODO
+		printf("Firmware Information in the Binary file:\n");
         return EXIT_OK;
     }
     // 帶有掃描serial port時，掃描及列出後，不再繼續執行
@@ -138,56 +88,59 @@ int main(int argc, char *argv[])
         scanSerialport();
         return EXIT_OK;
     }
+
+    SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+    printf("Arguments setting by user:\n");
     if(param.a) {
         bAutoDetect = true;
-        printf(" argument: Automatically detect the serial port for SiS Device.\n");
+        printf(" * Automatically detect the serial port for SiS Device.\n");
     }
     /*
      * 以下重要的參數
      */
     if(param.b) {
         bUpdateBootloader = true;
-        printf(" argument: Update Bootloader.\n");
+        printf(" * Update Bootloader.\n");
     }
     if(param.ba) {
         bUpdateBootloader_auto = true;
-        printf(" argument: Automatically Update Bootloader.\n");
+        printf(" * Automatically Update Bootloader.\n");
     }
     if(param.nc) {
         bNc = true;
-        printf(" argument: No need to confirm update.\n");
+        printf(" * No need to confirm update.\n");
     }
     if(param.d) {
         bDump = true;
         //TODO
-        printf(" argument: Dump function HAS NOT SUPPORT YET.\n");
+        printf(" * Dump function HAS NOT SUPPORT YET.\n");
     }
-    if(param.force) { // Force what?
+    if(param.force) {
         bForceUpdate = true;
-        printf(" argument: Force update firmware.\n");
+        printf(" * Force update firmware.\n");
     }
-    if(param.jump) {	// Jump what?
+    if(param.jump) {
         bJump = true;
-        printf(" argument: Skip parameter validation.\n");
+        printf(" * Skip parameter validation.\n");
     }
     if(param.p) {
         bUpdateParameter = true;
         //TODO
-        printf(" argument: Only update parameter HAS NOT SUPPORT YET.\n");
+        printf(" * Only update parameter HAS NOT SUPPORT YET.\n");
     }
     if(param.r) {
         bReserveRODATA = true;
         //TODO
-        printf(" argument: Reserve RO data HAS NOT SUPPORT YET.\n");
+        printf(" * Reserve RO data HAS NOT SUPPORT YET.\n");
     }
     if(param.w) {
         bWaitTime = true;
         //TODO
-        printf(" argument: Wait time HAS NOT SUPPORT YET.\n");
+        printf(" * Wait time HAS NOT SUPPORT YET.\n");
     }
-	
-	print_sep();
 
+    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+	print_sep();
     /*
      * ==============================
      * 1. 參數檢查
@@ -196,7 +149,6 @@ int main(int argc, char *argv[])
      * 4. 進入更新程序
      * ==============================
      */
-
 #if 1 //NOT IMPLEMENT
 	if(bUpdateParameter || bReserveRODATA || bDump || bWaitTime) {
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
@@ -217,7 +169,17 @@ int main(int argc, char *argv[])
         return EXIT_BADARGU;
     }
 #endif
-
+	/* 選定韌體檔案 */
+    if(param.infile[0] != '\0') {
+        //printf("Open %s file\n", param.infile);
+        filename = QString::fromStdString(param.infile);
+        //filename = QString::fromLocal8Bit(param.infile);
+    }
+    else {
+        printf("No binary file found.\n");
+        return EXIT_BADARGU;
+    }
+	/* 選定Com Port */
 	if(param.com[0] != '\0') {
         //printf("Open the Serial %s port\n", param.com);
         ComPortName = QString::fromStdString(param.com);
@@ -229,7 +191,6 @@ int main(int argc, char *argv[])
         printf("Please type a comX port, or type '-a' to auto detect the serial port.\n");
         return EXIT_BADARGU;
     }
-	 
 	// 為了7501初期暫時的處置
     // 提示必須同時更新Bootloader
 #if 1
@@ -240,11 +201,11 @@ int main(int argc, char *argv[])
         return EXIT_BADARGU;
     }
 #endif
-
-    /* 決定要不要更新Boot Loader
-     * 同時下"更新Bootloader"和
-     *      "自動更新Bootloader"時，
-     *      以"自動"為優先
+    /*
+	 * 決定要不要更新Boot Loader
+     * 同時下"更新Bootloader"
+     *     和"自動更新Bootloader"時，
+     *     以"自動"為優先
      */
     if(bUpdateBootloader_auto == false) {
         if (bUpdateBootloader == true) {
@@ -258,20 +219,9 @@ int main(int argc, char *argv[])
         printf("Attention: -b and -ba are conflict, it will use -ba to update bootloader automatically.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
     }
-
     print_sep();
-
-    /* 讀取韌體檔案 */
-    if(param.infile[0] != '\0') {
-        //printf("Open %s file\n", param.infile);
-        filename = QString::fromStdString(param.infile);
-        //filename = QString::fromLocal8Bit(param.infile);
-    }
-    else {
-        printf("No binary file found.\n");
-        return EXIT_BADARGU;
-    }
 #if 1
+	/* 開啟韌體檔案*/
 	exitCode = openBinary(filename);
     if (exitCode == EXIT_OK) {
         qDebug() << "Load firmware binary file successfully:" << filename;
@@ -304,6 +254,7 @@ int main(int argc, char *argv[])
     }
     fclose(fp);
 #endif
+	/* 抓出韌體內的資訊*/
 	exitCode = getFirmwareInfo(sis_fw_data);
     if (exitCode == EXIT_OK) {
         qDebug() << "Generate firmware binary information successfully.";
@@ -311,8 +262,8 @@ int main(int argc, char *argv[])
         qDebug() << "Generate firmware binary information failed.";
         return exitCode;
     }
-
-    //TODO: verify SIS BINARY FILE
+    //TODO
+	/* 檢查韌體資訊 */
     exitCode = verifyFirmwareInfo(sis_fw_data);
     if (exitCode == EXIT_OK) {
         qDebug() << "Verify firmware binary file successfully:" << filename;
@@ -320,7 +271,6 @@ int main(int argc, char *argv[])
         qDebug() << "Verify firmware binary file failed:" << filename;
         return exitCode;
     }
-
     /* 開啟Serial port
      * -a: 自動測試並取得連接SIS Device的Serial Port
      * 如果使用者指定Serial Port，就不會再做自動測試
@@ -349,163 +299,10 @@ int main(int argc, char *argv[])
         return CT_EXIT_NO_COMPORT;
     }
     printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
-#endif
-
-#ifndef BAN_0322
-    /*
-     * 沒有接參數的時候，顯示指令用法
-     */
-    if (argumentCount == 1) {
-        printVersion();
-        printf("\n");
-        printf("Usage: %s [ Options ] | [File] | [Serial Port]\n", argumentList.first().toLocal8Bit().constData());
-        showHelp();
-        return EXIT_OK;
-    }
-
-    printVersion();
-    print_sep();
-
-    /*
-     *  參數parse
-     *  檢查不合法的參數
-     */
-    for (int i = 1; i < argc; i++) {
-        if (!handle_input(argv[i])) {
-            print_sep();
-            return EXIT_BADARGU;
-        }
-        /* 跳過對檔案名稱和Serial port的檢查，避免當成不合法參數 */
-        if ((strcmp(argv[i], "-f" ) == 0) ||
-            (strcmp(argv[i], "-c" ) == 0)) {
-            i++;
-        }
-    }
-
-    // SHOW HELP
-    if (a.arguments().contains("-h")) {
-        showHelp();
-		print_sep();
-        return EXIT_OK;
-    }
-    if (a.arguments().contains("-s")) {
-        printf("Scan and list all available serial ports.\n");
-        scanSerialport();
-        print_sep();
-        return EXIT_OK;
-    }
-
-    /*
-     * PARSE AND GET COMMAND ARGUMENTS
-     */
-    if (a.arguments().contains("--force")) {
-        bForceUpdate = true;
-        printf("Argument: Force update.\n");
-    }
-    if (a.arguments().contains("-f")) {
-        int index = a.arguments().indexOf("-f");
-        if (index + 1 < argc) {
-            filename = argv[index + 1];
-        }
-        printf("Argument: Firmware file name: %s.\n", filename.toStdString().c_str());
-    }
-    if (a.arguments().contains("--jump")) {
-        bJump = true;
-        printf("Argument: Jump parameter validation.\n");
-    }
-
-    /*
-     * -a: 自動測試並取得連接SIS Device的Serial Port
-     * -c: 使用者指定Serial Port
-     *     如果使用者指定Serial Port，就不會再做自動測試
-    */
-    if (a.arguments().contains("-c")) {
-        bAutoDetect = false;
-        bAssignPort = true;
-        int index = a.arguments().indexOf("-c");
-        if (index + 1 < argc) {
-            ComPortName = argv[index + 1];
-        }
-        printf("Argument: Assign the %s port to update.\n", ComPortName.toStdString().c_str());
-    } else if (a.arguments().contains("-a")) {
-        bAutoDetect = true;
-        bAssignPort = false;
-        printf("Argument: Auto test all serial ports that connect to SiS device.\n");
-    }
-
-    /*
-     * 同時下"更新Bootloader"和
-     *      "自動更新Bootloader"時，
-     *      以"自動"為優先
-     */
-    if (a.arguments().contains("-ba")) {
-        bUpdateBootloader_auto = true;
-        printf("Argument: Update bootloader automatically.\n");
-    } else if (a.arguments().contains("-b")) {
-        bUpdateBootloader = true;
-        printf("Argument: Update bootloader.\n");
-    }
-    if (a.arguments().contains("-g")) {
-        bReserveRODATA = true;            //TODO
-        printf("Argument: Reserve RO data.\n");
-    }
-    if (a.arguments().contains("-r")) {
-        bUpdateParameter = true;          //TODO
-        printf("Argument: Only update parameter.\n");
-    }
-/*
-    if (a.arguments().contains("-w=")) {
-        //bwaitTime = atoi(arg + 3);        //TODO
-        printf("Argument: Wait time set: %d\n", wait_time);
-    }
-*/
-    print_sep();
-
-    /* Auto get available serial ports that connect to  SIS Device*/
-    if (bAutoDetect) 
-        testSerialPort(&ComPortName);
-    
-    /*
-     * OPEN SIS UART COMM PORT
-     */
-    if ((bAutoDetect) || (bAssignPort)) {
-        if (ComPortName.size()>4) {
-            QString tmp = "\\\\.\\";
-            tmp.append(ComPortName);
-            ComPortName = tmp;
-        }
-
-        //qDebug() << "Open SiS" << ComPortName << "port";
-        serial.setPortName(ComPortName);
-
-        /*
-         * UART預設值
-         */
-        serial.setBaudRate(QSerialPort::Baud115200);
-        serial.setDataBits(QSerialPort::Data8);
-        serial.setParity(QSerialPort::NoParity);
-        serial.setStopBits(QSerialPort::OneStop);
-        serial.setFlowControl(QSerialPort::NoFlowControl);
-
-        if (!serial.open(QIODevice::ReadWrite)) {
-            standardOutput << QObject::tr("Failed to open serial %1 port, error: %2.")
-                              .arg(ComPortName, serial.errorString())
-                           << Qt::endl;
-            return CT_EXIT_NO_COMPORT;
-        }
-
-        printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
-    }
-    else {
-        printf("Do not have Open any serial port, please see the HELP.\n");
-        return CT_EXIT_NO_COMPORT;
-    }
-#endif
-
-    if (bNc == false) {
-        getUserInput();
-    }
-
+	
+	/* 等待使用者確認後再更新 */
+	printf("\n");
+    if (bNc == false) getUserInput();
     //TODO
     /* Here we can disable GR Uart Debug message */
     
@@ -532,13 +329,13 @@ int main(int argc, char *argv[])
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
     free(sis_fw_data);
+	
+	//TODO
+    /* Here we can enable GR Uart Debug message */
 
     if (serial.isOpen()) {
-        //TODO
-        /* Here we can enable GR Uart Debug message */
         serial.close();
     }
-
     return exitCode;
     //  return a.exec();
 }
@@ -569,7 +366,6 @@ const QStringList getComportRegKey()
         }
         delete[] szData;
     }
-
     RegCloseKey( comsKey );
     return comports;
 }
@@ -603,7 +399,6 @@ int testSerialPort(QString *ComPortName)
             tmp.append(curPortName);
             curPortName = tmp;
         }
-
         HANDLE hComm;
         hComm = CreateFile( (const wchar_t*) curPortName.utf16(),
                             GENERIC_READ | GENERIC_WRITE,
@@ -629,20 +424,17 @@ int testSerialPort(QString *ComPortName)
             SetCommState( hComm, &tmpDCB );
             printf("Open %s successfully\t--> ", curPortName.toStdString().c_str());
         }
-
         //BOOL status;
         char lpBuffer[] = SIS_VERIFY;
         DWORD dNoOfBytestoWrite;
         DWORD dNoOfBytesWritten = 0;
         dNoOfBytestoWrite = sizeof( lpBuffer );
-
         //status = WriteFile( hComm,
         WriteFile( hComm,
                    lpBuffer,
                    dNoOfBytestoWrite,
                    &dNoOfBytesWritten,
                    NULL );
-
         HANDLE hThread;
         hThread = CreateThread(NULL, 0, RcvWaitProc, hComm, 0, NULL);
         if ( WaitForSingleObject(hThread, TIMEOUT_SERIAL) == WAIT_TIMEOUT ) {
@@ -676,7 +468,6 @@ int testSerialPort(QString *ComPortName)
                 mismatchKey = TRUE;
             }
         }
-
         if (mismatchKey == FALSE) {
             printf("verifying key matches for SiS Device.\n");
             CloseHandle( hComm );
@@ -695,7 +486,6 @@ int testSerialPort(QString *ComPortName)
             CloseHandle( hComm );
             continue;
         }
-
         CloseHandle( hComm );
     }
 
@@ -703,11 +493,9 @@ int testSerialPort(QString *ComPortName)
     if ( occupiedPortCount>0 ) {
         printf("(Open com port fail, some com ports were occupied).\n");
     }
-
     if (mismatchKey == TRUE) {
         printf("(Verifying key mismatch).\n");
     }
-
     if (timeOutPortCount>0) {
         printf("(UART RX no response).\n");
     }
@@ -726,7 +514,6 @@ int openBinary(QString path)
         qDebug() << "Could not open bin file for reading.";
         return EXIT_ERR;
     }
-
     while(!file.atEnd())
     {
       // return value from 'file.read' should always be sizeof(char).
@@ -736,10 +523,8 @@ int openBinary(QString path)
     file.close();
 
     printf("Firmware data being read are %i bytes.\n", FirmwareString.length());
-
     //sis_fw_data = (unsigned char *)FirmwareString.data();
     sis_fw_data = (quint8 *)FirmwareString.data();
-    
     return EXIT_OK;
 }
 
@@ -747,7 +532,6 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 {
     binaryMap.bootLoader.sourceTag = sis_fw_data[0x200];
     //printf("sourceCode Tag: %x.\n", binaryMap.bootLoader.sourceTag);
-	
 	if (0)
 		return EXIT_ERR;
     return EXIT_OK;
@@ -764,19 +548,15 @@ int verifyFirmwareInfo(quint8 *sis_fw_data)
 
 void getUserInput() {
     char user_input;
-
+	
     while (1) {
-        printf("\nContinue the update process? (Y/n): ");
-        scanf(" %c", &user_input);
-
+        printf("Continue the update process? (Y/n): ");
+        user_input = getchar();
         if (user_input == 'y' || user_input == 'Y') {
             break;
         }
         else if (user_input == 'n' || user_input == 'N') {
             exit(0);
-        }
-        else {
-            printf("Invalid input.\n");
         }
     }
 }

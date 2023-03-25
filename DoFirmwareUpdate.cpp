@@ -534,7 +534,7 @@ bool sisClearBootflag(QSerialPort* serial)
 
     pack_num = ((BOOT_FLAG_SIZE + PACK_SIZE - 1) / PACK_SIZE);
 
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
     /* 根據運算資料量設定進度欄的寬度
      * EX. 每4K設定5個字元寬
      */
@@ -554,7 +554,7 @@ bool sisClearBootflag(QSerialPort* serial)
         count_84 = 0x1e000;
 
         for (i = 0; i < pack_num; i++) {
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
             progresBar(pack_num, i + 1, progresWidth, 1); // 列印進度條
 #endif
             size_84 = (0x1f000 > (count_84 + PACK_SIZE))? PACK_SIZE : (0x1f000 - count_84);
@@ -564,7 +564,7 @@ bool sisClearBootflag(QSerialPort* serial)
                 break;
             count_84 += size_84;
         }
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
         printf("\n"); // 進度條完成後換行用
 #endif
 		if (ret == false) {
@@ -607,7 +607,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
      * sisWriteDataCmd: Use 84 COMMAND
      * sisFlashRom
     */
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
     int total_pack = (count / _4K) * ((_4K + PACK_SIZE - 1) / PACK_SIZE);
     int pack_base = 0;
     /* 根據運算資料量設定進度欄的寬度
@@ -639,7 +639,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
             count_84 = count_83;
 
             for (i = 0; i < pack_num; i++) {
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
                 // 這邊每次做的都是一個RAM_SIZE的大小的寫入
                 // 例如12K，每筆52Bytes，共需要237次(pack_num)
                 progresBar(total_pack, pack_base + i + 1, progresWidth, 2); /* 列印進度條 */
@@ -678,14 +678,14 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
         }
 
         count_83 += size_83;
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
         pack_base += pack_num;
 #endif
         if (count_83 == count_84) {
             //printf("SiS count_83 == count_84.\n");
         }
     }
-#ifdef _PROCESSBAR
+#ifdef PROCESSBAR
     printf("\n"); // 進度條後完成後跳下一行
 #endif
     return true;
@@ -1036,7 +1036,7 @@ int sisUpdateFlow(QSerialPort* serial,
             //}
         } else {
 			if (bUpdateBootloader == true) {
-				printf("and we also set to update Bootloader\n");
+				printf("and we also set to update Bootloader.\n");
 			} else {
 				printf("but No update Bootloader.\n");
 				printf("Please update with -b parameter.\n");
