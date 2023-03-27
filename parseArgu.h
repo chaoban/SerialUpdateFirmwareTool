@@ -1,6 +1,5 @@
 ﻿#ifndef PARSEARGU_H
 #define PARSEARGU_H
-
 #include <string.h>
 #include <stdio.h>
 
@@ -19,6 +18,8 @@ typedef struct {
     bool ba;
     bool nc;
 	bool d;
+    bool dbg;
+    int  dbgMode;
     bool force;
 	bool h;
 	bool jump;
@@ -32,8 +33,9 @@ typedef struct {
 
 arg_t args[] = {
 	{"-h",       "Display this help information."},
-    {"Input file ",	"Load the Binary firmware's name."},
-    {"comX",     "Specify updating firmware through serial comX port. (X=1, 2, 3...) Such as com3.\n"},
+    {"{file}",	 "Load the Binary firmware's name."},
+    {"com[0-16]","Specify updating firmware through serial com port. Such as com3.\n"},
+    {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              --dbg={0|1}"},
 	{"--force",  "Force update firmware without considering version."},
 	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."},
     {"-a",       "Automatically detect the serial port connected to the SiS device for firmware update."},
@@ -57,6 +59,8 @@ args_t param = {
     .ba = 		false,
     .nc = 		false,
     .d = 		false,
+    .dbg =      false,
+    .dbgMode = 0,
     .force = 	false,
     .h = 		false,
     .jump = 	false,
@@ -70,7 +74,7 @@ args_t param = {
 
 void print_help() {
     printf("Update SiS Device firmware by serial comX port from object <file>.\n");
-    printf("Usage: sUpdateFw <option(s)> <com port> <file>\n");
+    printf("Usage: sUpdateFw <file> <option(s)> | <com[0-16]>\n");
     printf(" At least one of the following switches must be given.\n");
     printf(" Options:\n");
     for(unsigned int j = 0; j < sizeof(args)/sizeof(arg_t); j++) {
@@ -87,7 +91,7 @@ int process_args(int argc, char *argv[], args_t* param) {
         if (argv[i][0] == '-') { // 開頭為'-'的參數
             int found = 0; // 紀錄是否找到參數
             for(unsigned int j = 0; j < sizeof(args)/sizeof(arg_t); j++) {
-                if(strcmp(argv[i], args[j].arg) == 0) {
+                if(strcmp(argv[i], args[j].arg) == 0) { // To check arguments support or not
                     found = 1;
                     if(strcmp(argv[i], "-a") == 0) {
                         param->a = true;
@@ -133,33 +137,50 @@ int process_args(int argc, char *argv[], args_t* param) {
                     }
                     break;
                 }
+                if(strncmp(argv[i], "--dbg", 5) == 0) {
+                    found = 1;
+                    char* dbg_str = argv[i] + 5;
+                    param->dbg = true;
+                    if(strcmp(dbg_str, "=1") == 0) {
+                        param->dbgMode = 1;
+                    }
+                    else if(strcmp(dbg_str, "=0") == 0) {
+                        param->dbgMode = 0;
+                    }
+                    else {
+                        param->dbg = false;
+                        printf("Invalid argument for --dbg option. Valid values are = [0|1].\n");
+                        return -1;
+                    }
+                }
             }
             if(!found) {
                 printf("Unrecognized command-line option [%s]\n", argv[i]);
                 printf("Please type -h to show list of classes of commands.\n");
                 return -1;
             }
+        } // TODO: 需要優化，判斷COM後再抓後面數字即可
+        else
+        if(strcmp(argv[i], "com1") == 0 || strcmp(argv[i], "com2") == 0 || strcmp(argv[i], "com3") == 0 ||
+            strcmp(argv[i], "com4") == 0 || strcmp(argv[i], "com5") == 0 || strcmp(argv[i], "com6") == 0 ||
+            strcmp(argv[i], "com7") == 0 || strcmp(argv[i], "com8") == 0 || strcmp(argv[i], "com9") == 0 ||
+            strcmp(argv[i], "com10") == 0 || strcmp(argv[i], "com11") == 0 || strcmp(argv[i], "com12") == 0 ||
+            strcmp(argv[i], "com13") == 0 || strcmp(argv[i], "com14") == 0 || strcmp(argv[i], "com15") == 0 ||
+            strcmp(argv[i], "com16") == 0)
+        {
+            strcpy(param->com, argv[i]);
         }
-        else if(strcmp(argv[i], "com1") == 0 || // TODO: 需要優化，判斷COM後再抓後面數字即可
-            strcmp(argv[i], "com2") == 0 ||
-            strcmp(argv[i], "com3") == 0 ||
-            strcmp(argv[i], "com4") == 0 ||
-            strcmp(argv[i], "com5") == 0 ||
-            strcmp(argv[i], "com6") == 0 ||
-            strcmp(argv[i], "com7") == 0 ||
-            strcmp(argv[i], "com8") == 0 ||
-            strcmp(argv[i], "com9") == 0 ||
-            strcmp(argv[i], "com10") == 0 ||
-            strcmp(argv[i], "com11") == 0 ||
-			strcmp(argv[i], "com12") == 0 ||
-			strcmp(argv[i], "com13") == 0 ||
-			strcmp(argv[i], "com14") == 0 ||
-			strcmp(argv[i], "com15") == 0 ||
-            strcmp(argv[i], "com16") == 0) 
-			{
-				strcpy(param->com, argv[i]);
-			} else {
-				strcpy(param->infile, argv[i]);
+        else
+        {
+            char *ext = strrchr(argv[i], '.');      // 取得argv中最後一個 '.' 的位置
+            if(ext && strcmp(ext, ".bin") == 0) {   // 如果ext不為NULL且與".bin"相同，則argv為副檔名為bin的名稱
+                strcpy(param->infile, argv[i]);
+            }
+            else {
+                printf("Unrecognized command-line option [%s]\n", argv[i]);
+                printf("Please type -h to show list of classes of commands.\n");
+                return -1;
+            }
         }
     }
     return 0;

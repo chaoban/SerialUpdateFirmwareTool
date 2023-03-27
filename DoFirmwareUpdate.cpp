@@ -1073,7 +1073,7 @@ int sisUpdateFlow(QSerialPort* serial,
         printf("Time Stamp: %08x.\n", timeStamp);
 
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-        printf("\x1b[1mSTART FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT.\x1b[0m\n");
+        printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT.\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
         bRet = burningCode(serial, sis_fw_data, bUpdateBootloader);

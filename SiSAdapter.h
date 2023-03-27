@@ -12,11 +12,6 @@ void print_sep();
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime);
 #endif
 
-
-#define GR_ENABLE_DEBUG {} //Disable GR Debug
-#define GR_DISABLE_DEBUG {} //Enable GR Debug
-
-
 #define SIS_VERIFY {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x43, 0x4d, 0x44} //SIS_VRF_CMD
 #define SIS_ACK {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
 #define SIS_VERIFY_LENGTH 12

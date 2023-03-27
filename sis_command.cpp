@@ -1,5 +1,5 @@
-﻿#include "sis_command.h"
-#include <QtGlobal>
+﻿#include <QtGlobal>
+#include "sis_command.h"
 
 void sis_Make_83_Buffer( quint8 *buf, unsigned int addr, int pack_num );
 void sis_Make_84_Buffer( quint8 *buf, const quint8 *val, int count );
@@ -49,4 +49,6 @@ void sis_Make_84_Buffer( quint8 *buf, const quint8 *val, int count )
     // crc
     *(buf + BIT_CRC) = sis_Calculate_Output_Crc( buf, len );
 }
+
+
 

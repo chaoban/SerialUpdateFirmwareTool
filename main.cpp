@@ -17,6 +17,7 @@
 #include "ExitStatus.h"
 //#pragma comment(lib, "Advapi32.lib")
 
+int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
 int testSerialPort(QString *ComPortName);
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
     QString ComPortName = "";
     QSerialPort serial; /* 開啟Serial Port用 */
     bool bAutoDetect = false;
-    bool bUpdateBootloader = false; /* At present, 7501 must update the bootloader at the same time */
+    bool bUpdateBootloader = false;
     bool bUpdateBootloader_auto = false;
     bool bNc = false;
     bool bDump = false;
@@ -60,17 +61,36 @@ int main(int argc, char *argv[])
     bool bReserveRODATA = false;
     bool bWaitTime = false;
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
+
+    QByteArray InitGR = QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray ReserHW = QByteArray::fromRawData("\x12\x07\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray DisableGRUart = QByteArray::fromRawData("\x12\x05\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray EnableGRUart =  QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray DisableIIC = QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x00\x00\x00", 10);
+    QByteArray EnableIIC = QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+
     /*
      * 處理輸入的參數
      * 沒有接參數的時候，顯示(Help)指令說明
      */
-    int ret = process_args(argc, argv, &param);
-    if(ret != EXIT_OK)
+    exitCode = process_args(argc, argv, &param);
+    if(exitCode != EXIT_OK)
         return EXIT_BADARGU;
 	
     // 帶有Help參數時，顯示參數說明，然後不再繼續執行
     if(param.h) {
         print_help();
+        return EXIT_OK;
+    }
+    if(param.dbg) {
+        if(param.dbgMode == 1) {
+            // TODO
+            printf("Enable GR Uart Debug Function.\n");
+        }
+        if (param.dbgMode == 0) {
+            // TODO
+            printf("Disable GR Uart Debug Function.\n");
+        }
         return EXIT_OK;
     }
 	if(param.v) {
@@ -81,7 +101,7 @@ int main(int argc, char *argv[])
         //TODO
         printf("Display Firmware Information of the Binary file:\n");
         bList = true;
-        //return EXIT_OK;
+        return EXIT_OK;
     }
     // 帶有掃描serial port時，掃描及列出後，不再繼續執行
     if(param.s) {
@@ -189,7 +209,7 @@ int main(int argc, char *argv[])
     } else if(bAutoDetect == true) {
         printf("Automatically detect the serial port that connect to SiS Device.\n");
     } else {
-        printf("Please type a comX port, or type '-a' to auto detect the serial port.\n");
+        printf("Please type a com[0-16] port, or type '-a' to auto detect the serial port.\n");
         return EXIT_BADARGU;
     }
 	// 為了7501初期暫時的處置
@@ -304,10 +324,15 @@ int main(int argc, char *argv[])
 	/* 等待使用者確認後再更新 */
 	printf("\n");
     if (bNc == false) getUserInput();
-    //TODO
-    /* Here we can disable GR Uart Debug message */
-    
 
+    //TODO
+    /*
+     * Here we can disable GR Uart Debug function
+     */
+    exitCode = GRDebugFunc(serial, DisableGRUart);
+    if (exitCode != EXIT_OK) {
+        return exitCode;
+    }
 
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port.";
@@ -332,7 +357,8 @@ int main(int argc, char *argv[])
     free(sis_fw_data);
 	
 	//TODO
-    /* Here we can enable GR Uart Debug message */
+    /* Here we can recovery GR Uart Debug function */
+    exitCode = GRDebugFunc(serial, EnableGRUart);
 
     if (serial.isOpen()) {
         serial.close();
@@ -560,4 +586,27 @@ void getUserInput() {
             exit(0);
         }
     }
+}
+
+int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData)
+{
+
+    if (writeData.isEmpty()) {
+        printf("No GR Uart switch command.\n");
+        return EXIT_BADARGU;
+    }
+
+    const qint64 bytesWritten = serial.write(writeData);
+
+    if (bytesWritten == -1) {
+        printf("error: Can not send command to serial port.\n");
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else if (bytesWritten != writeData.size()) {
+        printf("error: Send command to serial port but interrupt.\n");
+        return CT_EXIT_FAIL;
+    } else if (!serial.waitForBytesWritten(2000)) { // 等待最多 2000 毫秒(ms)，以確保資料已經成功地寫入串列埠
+        printf("error: Serial port timeout.\n");
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    }
+    return EXIT_OK;
 }
