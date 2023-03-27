@@ -4,8 +4,6 @@ typedef int ram_size_t;
 
 #define MAX_BYTE    64
 
-#define _TX_RX_MS_ 2    // Delay ms between TX/RX
-
 //SIS DEBUG
 #define SIS_ERR         -1
 
@@ -60,6 +58,11 @@ typedef int ram_size_t;
 //GR UART CMD ID
 #define GR_CMD_ID               0x12
 #define GR_EVENT_ID             0x0E
+
+#define SUCCESS                 0x0
+#define FAIL                    0x1
+
+
 //GR OP CODE
 #define BIT_UART_ID             0
 #define BIT_OP_LSB              1

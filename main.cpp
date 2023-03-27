@@ -4,6 +4,7 @@
 #include <QSerialPort>
 #include <QDebug>
 #include <QFile>
+#include <QThread>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -15,6 +16,8 @@
 #include "SiSAdapter.h"
 #include "version.h"
 #include "ExitStatus.h"
+#include "sis_command.h"
+//#include "delay.h"
 //#pragma comment(lib, "Advapi32.lib")
 
 int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
@@ -31,6 +34,7 @@ void getUserInput();
 extern void print_sep();
 extern int scanSerialport();
 extern int getTimestamp();
+extern void msleep(unsigned int msec);
 
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
@@ -62,12 +66,12 @@ int main(int argc, char *argv[])
     bool bWaitTime = false;
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
 
-    QByteArray InitGR = QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
-    QByteArray ReserHW = QByteArray::fromRawData("\x12\x07\x80\x05\x00\x09\x00\x01\x00\x00", 10);
-    QByteArray DisableGRUart = QByteArray::fromRawData("\x12\x05\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray DisableGRUart =  QByteArray::fromRawData("\x12\x05\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray DisableIIC =     QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x00\x00\x00", 10);
+    QByteArray ResetHW =        QByteArray::fromRawData("\x12\x07\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray EnableIIC =      QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray InitGR =         QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray EnableGRUart =  QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
-    QByteArray DisableIIC = QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x00\x00\x00", 10);
-    QByteArray EnableIIC = QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x01\x00\x00", 10);
 
     /*
      * 處理輸入的參數
@@ -325,14 +329,52 @@ int main(int argc, char *argv[])
 	printf("\n");
     if (bNc == false) getUserInput();
 
-    //TODO
     /*
      * Here we can disable GR Uart Debug function
      */
+    printf("Disable GR Uart debug feature ... ");
     exitCode = GRDebugFunc(serial, DisableGRUart);
     if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
         return exitCode;
-    }
+    }else
+        printf("Success.\n");
+
+    printf("Disable II2C ... ");
+    exitCode = GRDebugFunc(serial, DisableIIC);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        return exitCode;
+    }else
+        printf("Success.\n");
+
+    printf("Reset Hardware ... ");
+    exitCode = GRDebugFunc(serial, ResetHW);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        return exitCode;
+    }else
+        printf("Success.\n");
+	
+    QThread:msleep(400);    //msleep(400);
+	
+    printf("Enable II2C ... ");
+    exitCode = GRDebugFunc(serial, EnableIIC);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        return exitCode;
+    }else
+        printf("Success.\n");
+
+    printf("Initial Hardware ... ");
+    exitCode = GRDebugFunc(serial, InitGR);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        return exitCode;
+    }else
+        printf("Success.\n");
+
+    print_sep();
 
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port.";
@@ -355,14 +397,38 @@ int main(int argc, char *argv[])
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
     free(sis_fw_data);
+
+    print_sep();
 	
-	//TODO
-    /* Here we can recovery GR Uart Debug function */
+    printf("Disable II2C ... ");
+    exitCode = GRDebugFunc(serial, DisableIIC);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        //return exitCode;
+    }else
+        printf("Success.\n");
+
+    printf("Reset Hardware ... ");
+    exitCode = GRDebugFunc(serial, ResetHW);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        //return exitCode;
+    }else
+        printf("Success.\n");
+
+    printf("Enable GR Uart debug feature ... ");
     exitCode = GRDebugFunc(serial, EnableGRUart);
+    if (exitCode != EXIT_OK) {
+        printf("Failed.\n");
+        //return exitCode;
+    }else
+        printf("Success.\n");
+
 
     if (serial.isOpen()) {
         serial.close();
     }
+
     return exitCode;
     //  return a.exec();
 }
@@ -604,9 +670,36 @@ int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData)
     } else if (bytesWritten != writeData.size()) {
         printf("error: Send command to serial port but interrupt.\n");
         return CT_EXIT_FAIL;
-    } else if (!serial.waitForBytesWritten(2000)) { // 等待最多 2000 毫秒(ms)，以確保資料已經成功地寫入串列埠
+    } else if (!serial.waitForBytesWritten(1000)) { // 等待最多 2000 毫秒(ms)，以確保資料已經成功地寫入串列埠
         printf("error: Serial port timeout.\n");
         return CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
+
+    QThread:msleep(2);
+
+    if(serial.waitForReadyRead(1000)) {
+        QByteArray data = serial.read(13);
+#if 0
+        qDebug() << data.toHex();
+#endif
+        if(data.at(0) == GR_EVENT_ID) {
+            if(data.at(12) == SUCCESS) {
+                return EXIT_OK;
+            }
+            else if(data.at(12) == FAIL) {
+                qDebug() << "Serial port status is 'FAIL'.";
+                return CT_EXIT_FAIL;
+            }
+			else {
+                qDebug() << "Unknow Serial port status.";
+                return CT_EXIT_FAIL;
+			}
+        }
+    }
+    else {
+        qDebug() << "Serial port read data timeout.";
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    }
+
     return EXIT_OK;
 }

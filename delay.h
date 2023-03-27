@@ -4,6 +4,8 @@
 #include <QEventLoop>
 #include <QTimer>
 
+#define _TX_RX_MS_	2    // Delay ms between TX/RX
+
 void msleep(unsigned int msec);
 
 /*

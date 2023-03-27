@@ -57,7 +57,7 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
         standardOutput << QObject::tr("Failed to send all the command to port %1, error: %2")
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
         ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    } else if (!serial->waitForBytesWritten(5000)) {
+    } else if (!serial->waitForBytesWritten(1000)) {
         standardOutput << QObject::tr("Operation timed out or an error "
                                       "occurred for port %1, error: %2")
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;

@@ -23,13 +23,14 @@ int getTimestamp()
         printf("Invalid argument to _localtime64_s.");
         return 1;
     }
+	
+	printf("%ld\n", (long)long_time);
 
-    // Convert to an ASCII representation.
+    // Convert to an ASCII representation.	
     mmddHHMM  = BCD(static_cast<unsigned char>(newtime.tm_mon +1))<<24;
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_mday))<<16;
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_hour))<<8;
     mmddHHMM |= BCD(static_cast<unsigned char>(newtime.tm_min ));
-
     //int year = BCD(static_cast<unsigned char>(newtime.tm_year));
 
     return mmddHHMM;
