@@ -65,12 +65,12 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
         for (int i = 0; i < progressBarWidth; i++) {
             printf("#");
         }
-        printf("] [  OK  ]");
+        printf("] [Success]");
         fflush(stdout);
         return;
     }
 
-    // 檢查時間間隔是否符合要求
+    // 檢查時間間隔是否符合要求(更新進度欄的頻率)
     if ((time(NULL) - lastTime) < updateTime) {
         return;
     }
@@ -96,7 +96,7 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
     for (i = filled_width; i < progressBarWidth; i++) {
         printf(".");
     }
-    printf("] [ %d%% ]\r", (int)(percent*100));
+    printf("] [%d%%]\r", (int)(percent*100));
     fflush(stdout);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);

@@ -7,6 +7,7 @@
 
 //#define _CHAOBAN_TEST               1
 #define _DBG_DISABLE_READCMD        1
+//#define DR_INIT_FLOW                1
 #define PROCESSBAR                 1
 
 enum SIS_817_POWER_MODE {

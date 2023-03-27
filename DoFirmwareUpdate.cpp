@@ -739,26 +739,22 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     /* (3) Update Main Code Section 2
      *     ADDRESS: 0x6000, Length=0x1000
      */
-#if 1
     printf("Update Main Code Section 2 ...\n");
     ret = sisUpdateBlock(serial, fn, 0x00006000, 0x00001000);
     if (ret == false) {
         printf("SiS update firmware fail at Main Code Section 2 ... \n");
         return ret;
     }
-#endif
 
     /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc
      *     ADDRESS: 0x4000, Length=0x2000
      */
-#if 1
     printf("Update firmware info ...\n");
     ret = sisUpdateBlock(serial, fn, 0x00004000, 0x00002000);
     if (ret == false) {
         printf("SiS update firmware fail at info, regmem ...\n");
         return ret;
     }
-#endif
 
     /* (5) Update bootloader code (if need update_booloader)
      *     ADDRESS: 0x0, Length=0x4000
@@ -776,14 +772,12 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
     /* (6) Update rodata
      *     ADDRESS: 0x1d000, Length=0x2000
      */
-#if 1
     printf("Update Rodata and Boot Flag ...\n");
     ret = sisUpdateBlock(serial, fn, 0x0001d000, 0x00002000);
     if (ret == false) {
         printf("SiS update firmware fail at Rodata and Boot Flag.\n");
         return ret;
     }
-#endif
 
     /* (7) Burn Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000

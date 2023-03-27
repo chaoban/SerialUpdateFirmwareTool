@@ -21,6 +21,7 @@
 //#pragma comment(lib, "Advapi32.lib")
 
 int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
+void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
 int testSerialPort(QString *ComPortName);
@@ -282,9 +283,9 @@ int main(int argc, char *argv[])
 	/* 抓出韌體內的資訊*/
 	exitCode = getFirmwareInfo(sis_fw_data);
     if (exitCode == EXIT_OK) {
-        qDebug() << "Generate firmware binary information successfully.";
+        //qDebug() << "Dump firmware binary information successfully.";
     }else {    
-        qDebug() << "Generate firmware binary information failed.";
+        qDebug() << "Dump firmware binary information failed.";
         return exitCode;
     }
     //TODO
@@ -329,6 +330,7 @@ int main(int argc, char *argv[])
 	printf("\n");
     if (bNc == false) getUserInput();
 
+#ifdef DR_INIT_FLOW
     /*
      * Here we can disable GR Uart Debug function
      */
@@ -373,6 +375,8 @@ int main(int argc, char *argv[])
         return exitCode;
     }else
         printf("Success.\n");
+
+#endif
 
     print_sep();
 
@@ -595,6 +599,35 @@ int testSerialPort(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
+/*
+ * 列印特定位址起的數值
+ * quint8* sis_fw_data: // FW資料
+ * const char* str,     // 要輸出的說明
+ * quint32 address,     // 列印開始位置
+ * int length,          // 列印長度(Bytes)
+ * bool bcb             // 是否轉為BCB。true: BCB; false: 16進制
+ */
+void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb) {
+
+    assert((address + length) <= (unsigned int)FirmwareString.length());
+    if ((address + length) > (unsigned int)FirmwareString.length()) {
+        return;
+    }
+
+    quint8 data[length];
+
+    printf("%s: ", str);
+    for (int i = 0; i < length; i++) {
+        data[i] = *(sis_fw_data + address + i);
+        if (bcb)
+            printf("%c", isprint(data[i]) ? data[i] : '.');
+        else
+            printf("%02x ", data[i]);
+    }
+
+    printf("\n");
+}
+
 #if 1
 int openBinary(QString path)
 {
@@ -623,8 +656,30 @@ int openBinary(QString path)
 
 int getFirmwareInfo(quint8 *sis_fw_data)
 {
-    binaryMap.bootLoader.sourceTag = sis_fw_data[0x200];
+    // TODO: Refine later
+    //binaryMap.bootLoader.sourceTag = sis_fw_data[0x200];
     //printf("sourceCode Tag: %x.\n", binaryMap.bootLoader.sourceTag);
+
+    printf("Dump firmware binary information:\n");
+
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+    SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+
+    printAddrData(sis_fw_data, "SourceCodeTag", 0x200, 6, true);
+    printAddrData(sis_fw_data, "BinaryFileBuildTime", 0x206, 6, false);
+    printAddrData(sis_fw_data, "SiSMark", 0x20c, 4, true);
+    printAddrData(sis_fw_data, "CodeTag", 0x220, 4, false);
+    printAddrData(sis_fw_data, "BootloaderVersion", 0x230, 4, false);
+    printAddrData(sis_fw_data, "BootloaderCRC", 0x234, 4, false);
+
+    printAddrData(sis_fw_data, "CodeBaseTime", 0x4012, 4, false);
+
+
+    SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+
+
 	if (0)
 		return EXIT_ERR;
     return EXIT_OK;
