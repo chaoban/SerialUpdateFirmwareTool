@@ -36,6 +36,7 @@ extern void print_sep();
 extern int scanSerialport();
 extern int getTimestamp();
 extern void msleep(unsigned int msec);
+extern void getCurrentDateTime(quint8* sis_fw_data, quint32 address);
 
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
@@ -676,6 +677,10 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 
     printAddrData(sis_fw_data, "CodeBaseTime", 0x4012, 4, false);
 
+    //printAddrData(sis_fw_data, "FWUpdateTime", 0x40a0, 5, false);
+    //printAddrData(sis_fw_data, "FWUpdateTool", 0x40a5, 2, true);
+
+    printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
@@ -687,6 +692,20 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 
 int verifyFirmwareInfo(quint8 *sis_fw_data)
 {
+
+    //Special Update Flag : Update by serial port tool
+    //sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
+    //sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
+
+    // TODO: Add time stamp in 0x1e000, 4bytes
+    int timeStamp = getTimestamp();
+    printf("Time Stamp: %08x.\n", timeStamp);
+
+
+    getCurrentDateTime(sis_fw_data, 0x1e000);
+
+    printAddrData(sis_fw_data, "CurrentUpdateTime", 0x1e000, 4, false);
+
     if (0)
 		return EXIT_ERR;
 

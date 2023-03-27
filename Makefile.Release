@@ -246,7 +246,29 @@ release/DoFirmwareUpdate.o: DoFirmwareUpdate.cpp C:/Qt/5.15.2/mingw81_32/include
 		SiSAdapter.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\DoFirmwareUpdate.o DoFirmwareUpdate.cpp
 
-release/SiSAdapter.o: SiSAdapter.cpp SiSAdapter.h
+release/SiSAdapter.o: SiSAdapter.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QtGlobal \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qglobal.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qconfig-bootstrapped.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qconfig.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qtcore-config.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qsystemdetection.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qprocessordetection.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qcompilerdetection.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qtypeinfo.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qsysinfo.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qlogging.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qflags.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qatomic.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qbasicatomic.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qatomic_bootstrap.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qgenericatomic.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qatomic_cxx11.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qatomic_msvc.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qglobalstatic.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qmutex.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qnumeric.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qversiontagging.h \
+		SiSAdapter.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\SiSAdapter.o SiSAdapter.cpp
 
 release/main.o: main.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QCoreApplication \
