@@ -115,7 +115,6 @@ bool sisSwitchCmdMode(QSerialPort* serial)
                                                          0x00/*CRC16*/, 
                                                          CMD_SISXMODE, 
                                                          0x21, 0x01};
-
 /* 計算CRC並填入適當欄位內
  * 使用 sis_Calculate_Output_Crc( u8* buf, int len )
  * buf: 要計算的command封包
@@ -134,6 +133,8 @@ bool sisSwitchCmdMode(QSerialPort* serial)
         printf("SiS SEND Switch CMD Failed - 85(PWR_CMD_ACTIVE), Error code: %d\n", ret);
         return false;
     }
+
+    msleep(_TX_RX_MS_);
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
@@ -160,6 +161,9 @@ bool sisSwitchCmdMode(QSerialPort* serial)
         printf("SiS SEND Switch CMD Failed - 85(ENABLE_DIAGNOSIS_MODE), Error code: %d\n", ret);
         return false;
     }
+
+    msleep(_TX_RX_MS_);
+
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
 	//return true;
@@ -174,7 +178,7 @@ bool sisSwitchCmdMode(QSerialPort* serial)
     ret = verifyRxData(tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
-        printf("SiS Send Switch CMD Error code: %d\n", result);
+        printf("SiS Send Switch CMD Error code: %d\n", ret);
         return false;
     }
 #endif
@@ -252,6 +256,8 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
         return ret;
     }
 
+    msleep(_TX_RX_MS_);
+
 #ifdef _DBG_DISABLE_READCMD
 	ret = EXIT_OK;
 #else
@@ -323,6 +329,8 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
         return ret;
     }
 
+    msleep(_TX_RX_MS_);
+
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
 	ret = EXIT_OK;
@@ -367,6 +375,8 @@ bool sisResetCmd(QSerialPort* serial)
 	    return false;
     }
 
+    msleep(_TX_RX_MS_);
+
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
@@ -406,6 +416,8 @@ bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
         printf("SiS Update CMD Failed - 83(WRI_FW_DATA_INFO) %d\n", ret);
 		return false;
 	}
+
+    msleep(_TX_RX_MS_);
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -451,6 +463,8 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
         return false;
     }
 
+    msleep(_TX_RX_MS_);
+
 #ifndef _DBG_DISABLE_READCMD
     quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
@@ -489,7 +503,7 @@ bool sisFlashRom(QSerialPort* serial)
 	    return false;
     }
 
-    msleep(2000);
+    msleep(_TX_RX_MS_);
 	
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -573,6 +587,7 @@ bool sisClearBootflag(QSerialPort* serial)
 		}
 
         //msleep(1000);
+        //msleep(_TX_RX_MS_);
 
         ret = sisFlashRom(serial);
 		
@@ -822,6 +837,8 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
         return false;
     }
 
+    msleep(_TX_RX_MS_);
+
 #ifdef _DBG_DISABLE_READCMD
 	//return true;
 #else
@@ -990,7 +1007,7 @@ int sisUpdateFlow(QSerialPort* serial,
     }
 
     //msleep(2000);
-    msleep(1000); //chaoban test
+    //msleep(1000); //chaoban test
 
     /*
      * Get Bootloader ID and Bootloader CRC

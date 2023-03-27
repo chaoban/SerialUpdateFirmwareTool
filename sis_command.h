@@ -4,11 +4,13 @@ typedef int ram_size_t;
 
 #define MAX_BYTE    64
 
+#define _TX_RX_MS_ 2    // Delay ms between TX/RX
+
 //SIS DEBUG
 #define SIS_ERR         -1
 
 //SIS UPDATE FW
-#define RAM_SIZE ((ram_size_t)_12K)
+#define RAM_SIZE        ((ram_size_t)_12K)
 #define PACK_SIZE		52
 
 //SIS OP CODE

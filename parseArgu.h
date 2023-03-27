@@ -33,7 +33,7 @@ typedef struct {
 
 arg_t args[] = {
 	{"-h",       "Display this help information."},
-    {"{file}",	 "Load the Binary firmware's name."},
+    {"{file}",	 "Load the Binary firmware's name. Extension is named 'bin'."},
     {"com[0-16]","Specify updating firmware through serial com port. Such as com3.\n"},
     {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              --dbg={0|1}"},
 	{"--force",  "Force update firmware without considering version."},
