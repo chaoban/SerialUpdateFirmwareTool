@@ -5,10 +5,10 @@
 #include <QSerialPort>
 #include "ExitStatus.h"
 
-//#define _CHAOBAN_TEST               1
-#define _DBG_DISABLE_READCMD        1
-//#define DR_INIT_FLOW                1
-#define PROCESSBAR                 1
+#define _CHAOBAN_TEST               1
+//#define _DBG_DISABLE_READCMD        1
+#define _GR_INIT_FLOW               1
+#define _PROCESSBAR                 1
 
 enum SIS_817_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,

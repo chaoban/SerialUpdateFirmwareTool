@@ -2,13 +2,13 @@
 #define SISADAPTER_H
 #include <stdio.h>
 #include <string.h>
-#ifdef PROCESSBAR
+#ifdef _PROCESSBAR
 #include <time.h>
 #endif
 
 int getTimestamp();
 void print_sep();
-#ifdef PROCESSBAR
+#ifdef _PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime);
 #endif
 
@@ -18,7 +18,7 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
 
 #define TIMEOUT_SERIAL  3000
 /* Special Update Flag : Update by SerialPort */
-#define SERIAL_FLAG     0x5370 //ASCII: S P
+#define SERIAL_FLAG     0x5350 //ASCII: S P
 
 enum
 {
@@ -53,7 +53,7 @@ enum
  *  progressBarWidth 表示進度條的寬度。例如30表示總長度為30個字元
  *  updateTime 表示更新頻率，單位為秒
  */
-#ifdef PROCESSBAR
+#ifdef _PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime) {
     
     static time_t lastTime = 0; // 調整更新頻率用

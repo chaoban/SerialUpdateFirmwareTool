@@ -20,6 +20,8 @@
 //#include "delay.h"
 //#pragma comment(lib, "Advapi32.lib")
 
+extern void PrintUint64(quint64 x);
+
 int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
 void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
     QByteArray ResetHW =        QByteArray::fromRawData("\x12\x07\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray EnableIIC =      QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray InitGR =         QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
-    QByteArray EnableGRUart =  QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
+    QByteArray EnableGRUart =   QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
 
     /*
      * 處理輸入的參數
@@ -331,7 +333,7 @@ int main(int argc, char *argv[])
 	printf("\n");
     if (bNc == false) getUserInput();
 
-#ifdef DR_INIT_FLOW
+#ifdef _GR_INIT_FLOW
     /*
      * Here we can disable GR Uart Debug function
      */
@@ -376,7 +378,6 @@ int main(int argc, char *argv[])
         return exitCode;
     }else
         printf("Success.\n");
-
 #endif
 
     print_sep();
@@ -674,12 +675,10 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     printAddrData(sis_fw_data, "CodeTag", 0x220, 4, false);
     printAddrData(sis_fw_data, "BootloaderVersion", 0x230, 4, false);
     printAddrData(sis_fw_data, "BootloaderCRC", 0x234, 4, false);
-
+    printAddrData(sis_fw_data, "SpecialUpdateFlag", 0x4000, 2, true);
     printAddrData(sis_fw_data, "CodeBaseTime", 0x4012, 4, false);
-
     //printAddrData(sis_fw_data, "FWUpdateTime", 0x40a0, 5, false);
     //printAddrData(sis_fw_data, "FWUpdateTool", 0x40a5, 2, true);
-
     printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -692,19 +691,17 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 
 int verifyFirmwareInfo(quint8 *sis_fw_data)
 {
-
-    //Special Update Flag : Update by serial port tool
-    //sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
-    //sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
-
     // TODO: Add time stamp in 0x1e000, 4bytes
-    int timeStamp = getTimestamp();
+    quint32 timeStamp = getTimestamp();
+
     printf("Time Stamp: %08x.\n", timeStamp);
 
-
-    getCurrentDateTime(sis_fw_data, 0x1e000);
-
-    printAddrData(sis_fw_data, "CurrentUpdateTime", 0x1e000, 4, false);
+    //Special Update Flag : Update by serial port tool
+    quint8 *p = (quint8 *)(sis_fw_data + 0x4000);
+    *p++ = SERIAL_FLAG >> 8;
+    *p++ = SERIAL_FLAG & 0xff;
+    //sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
+    //sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
 
     if (0)
 		return EXIT_ERR;
@@ -751,9 +748,10 @@ int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData)
 
     QThread:msleep(2);
 
-    if(serial.waitForReadyRead(1000)) {
+    //if(serial.waitForReadyRead(-1)) {	//block until new data arrives
+	if(serial.waitForReadyRead(2000)) {	//block until new data arrives
         QByteArray data = serial.read(13);
-#if 0
+#if 1
         qDebug() << data.toHex();
 #endif
         if(data.at(0) == GR_EVENT_ID) {
