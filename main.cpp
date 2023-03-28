@@ -20,8 +20,6 @@
 //#include "delay.h"
 //#pragma comment(lib, "Advapi32.lib")
 
-extern void PrintUint64(quint64 x);
-
 int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
 void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
@@ -34,11 +32,11 @@ int occupiedPortCount = 0;
 int timeOutPortCount = 0;
 bool mismatchKey = FALSE;
 void getUserInput();
-extern void print_sep();
 extern int scanSerialport();
 extern int getTimestamp();
 extern void msleep(unsigned int msec);
-extern void getCurrentDateTime(quint8* sis_fw_data, quint32 address);
+extern void print_sep();
+extern DateTime getCurrentDateTime();
 
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
@@ -85,31 +83,20 @@ int main(int argc, char *argv[])
     if(exitCode != EXIT_OK)
         return EXIT_BADARGU;
 	
+    if(param.v) {
+        printVersion();
+        return EXIT_OK;
+    }
     // 帶有Help參數時，顯示參數說明，然後不再繼續執行
     if(param.h) {
         print_help();
         return EXIT_OK;
     }
-    if(param.dbg) {
-        if(param.dbgMode == 1) {
-            // TODO
-            printf("Enable GR Uart Debug Function.\n");
-        }
-        if (param.dbgMode == 0) {
-            // TODO
-            printf("Disable GR Uart Debug Function.\n");
-        }
-        return EXIT_OK;
-    }
-	if(param.v) {
-        printVersion();
-        return EXIT_OK;
-    }
-	if(param.l) {
+    if(param.l) {
         //TODO
-        printf("Display Firmware Information of the Binary file:\n");
+        printf("Display Firmware Information of the Binary firmware file:\n");
         bList = true;
-        return EXIT_OK;
+        goto lb_GetFile;
     }
     // 帶有掃描serial port時，掃描及列出後，不再繼續執行
     if(param.s) {
@@ -123,6 +110,17 @@ int main(int argc, char *argv[])
     if(param.a) {
         bAutoDetect = true;
         printf(" * Automatically detect the serial port for SiS Device.\n");
+    }
+    if(param.dbg) {
+        if(param.dbgMode == 1) {
+            // TODO
+            printf("Enable GR Uart Debug Function.\n");
+        }
+        if (param.dbgMode == 0) {
+            // TODO
+            printf("Disable GR Uart Debug Function.\n");
+        }
+        return EXIT_OK;
     }
     /*
      * 以下重要的參數
@@ -198,6 +196,7 @@ int main(int argc, char *argv[])
         return EXIT_BADARGU;
     }
 #endif
+lb_GetFile:
 	/* 選定韌體檔案 */
     if(param.infile[0] != '\0') {
         //printf("Open %s file\n", param.infile);
@@ -208,6 +207,9 @@ int main(int argc, char *argv[])
         printf("No binary file found.\n");
         return EXIT_BADARGU;
     }
+
+    if(bList == true) goto lb_Openfile;
+
 	/* 選定Com Port */
 	if(param.com[0] != '\0') {
         //printf("Open the Serial %s port\n", param.com);
@@ -249,6 +251,9 @@ int main(int argc, char *argv[])
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
     }
     print_sep();
+
+lb_Openfile:
+
 #if 1
 	/* 開啟韌體檔案*/
 	exitCode = openBinary(filename);
@@ -291,6 +296,10 @@ int main(int argc, char *argv[])
         qDebug() << "Dump firmware binary information failed.";
         return exitCode;
     }
+
+    if(bList == true)
+        return EXIT_OK;
+
     //TODO
 	/* 檢查韌體資訊 */
     exitCode = verifyFirmwareInfo(sis_fw_data);
@@ -661,7 +670,6 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     // TODO: Refine later
     //binaryMap.bootLoader.sourceTag = sis_fw_data[0x200];
     //printf("sourceCode Tag: %x.\n", binaryMap.bootLoader.sourceTag);
-
     printf("Dump firmware binary information:\n");
 
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -675,14 +683,13 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     printAddrData(sis_fw_data, "CodeTag", 0x220, 4, false);
     printAddrData(sis_fw_data, "BootloaderVersion", 0x230, 4, false);
     printAddrData(sis_fw_data, "BootloaderCRC", 0x234, 4, false);
-    printAddrData(sis_fw_data, "SpecialUpdateFlag", 0x4000, 2, true);
+    //printAddrData(sis_fw_data, "SpecialUpdateFlag", 0x4000, 2, true);
     printAddrData(sis_fw_data, "CodeBaseTime", 0x4012, 4, false);
     //printAddrData(sis_fw_data, "FWUpdateTime", 0x40a0, 5, false);
     //printAddrData(sis_fw_data, "FWUpdateTool", 0x40a5, 2, true);
-    printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
+    //printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-
 
 	if (0)
 		return EXIT_ERR;
@@ -691,17 +698,29 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 
 int verifyFirmwareInfo(quint8 *sis_fw_data)
 {
-    // TODO: Add time stamp in 0x1e000, 4bytes
     quint32 timeStamp = getTimestamp();
+    printf("Current time: %08x.\n", timeStamp);
 
-    printf("Time Stamp: %08x.\n", timeStamp);
+    // Add time stamp in 0x1e000, 4bytes
+    DateTime dateTime = getCurrentDateTime();
+
+    // 將月、日、時、分分別存入 sis_fw_data 陣列的 0x1e000 開始的 4 bytes
+    //sis_fw_data[0x1e000] = static_cast<quint8>(dateTime.year >> 8); // 年
+    //sis_fw_data[0x1e001] = static_cast<quint8>(dateTime.year);      // 年
+    sis_fw_data[0x1e000] = dateTime.month;
+    sis_fw_data[0x1e001] = dateTime.day;
+    sis_fw_data[0x1e002] = dateTime.hour;
+    sis_fw_data[0x1e003] = dateTime.minute;
+
+    printAddrData(sis_fw_data, "Write new update time to FW", 0x1e000, 4, false);
 
     //Special Update Flag : Update by serial port tool
-    quint8 *p = (quint8 *)(sis_fw_data + 0x4000);
-    *p++ = SERIAL_FLAG >> 8;
-    *p++ = SERIAL_FLAG & 0xff;
-    //sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
-    //sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
+    // quint8 *p = (quint8 *)(sis_fw_data + 0x4000);
+    // *p++ = SERIAL_FLAG >> 8;
+    // *p++ = SERIAL_FLAG & 0xff;
+    sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
+    sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
+    printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, true);
 
     if (0)
 		return EXIT_ERR;

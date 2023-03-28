@@ -1,5 +1,6 @@
 ﻿#ifndef SISADAPTER_H
 #define SISADAPTER_H
+#include <QDateTime>
 #include <stdio.h>
 #include <string.h>
 #ifdef _PROCESSBAR
@@ -19,6 +20,14 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
 #define TIMEOUT_SERIAL  3000
 /* Special Update Flag : Update by SerialPort */
 #define SERIAL_FLAG     0x5350 //ASCII: S P
+
+struct DateTime {
+    quint16 year;
+    quint8 month;
+    quint8 day;
+    quint8 hour;
+    quint8 minute;
+};
 
 enum
 {

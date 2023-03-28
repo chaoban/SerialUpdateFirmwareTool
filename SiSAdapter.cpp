@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "SiSAdapter.h"
 
-void getCurrentDateTime(quint8* sis_fw_data, quint32 address);
+DateTime getCurrentDateTime();
 
 static inline unsigned char BCD (unsigned char x)
 {
@@ -38,30 +38,21 @@ int getTimestamp()
     return mmddHHMM;
 }
 
-void getCurrentDateTime(quint8* sis_fw_data, quint32 address) {
-    // 獲取當前日期和時間
-    time_t t = time(nullptr);
-    struct tm* tm = localtime(&t);
+DateTime getCurrentDateTime()
+{
+    // 取得當前日期時間
+    QDateTime currentDateTime = QDateTime::currentDateTime();
 
-    // 將日期和時間格式化為字串
-    char datetime_str[20];
-    strftime(datetime_str, sizeof(datetime_str), "%m%d%H%M", tm);
+    // 取得年、月、日、時、分
+    DateTime dateTime;
+    dateTime.year = static_cast<quint16>(currentDateTime.date().year());
+    dateTime.month = static_cast<quint8>(currentDateTime.date().month());
+    dateTime.day = static_cast<quint8>(currentDateTime.date().day());
+    dateTime.hour = static_cast<quint8>(currentDateTime.time().hour());
+    dateTime.minute = static_cast<quint8>(currentDateTime.time().minute());
 
-
-    // 將字串轉換為二進制數據並寫入sis_fw_data
-    quint32 datetime;
-    sscanf(datetime_str, "%u", &datetime);
-
-        // 將 datetime 轉換為 ASCII 碼，並存儲到 sis_fw_data 中
-        quint8 *p = (quint8 *)(sis_fw_data + 0x1e000);
-        *p++ = datetime_str[0];
-        *p++ = datetime_str[1];
-        *p++ = datetime_str[2];
-        *p++ = datetime_str[3];
-        *p++ = datetime_str[4];
-        *p++ = datetime_str[5];
-        *p++ = datetime_str[6];
-        *p++ = datetime_str[7];
+    // 回傳日期時間
+    return dateTime;
 }
 
 void print_sep()

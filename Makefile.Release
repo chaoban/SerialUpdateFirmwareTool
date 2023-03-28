@@ -243,7 +243,9 @@ release/DoFirmwareUpdate.o: DoFirmwareUpdate.cpp C:/Qt/5.15.2/mingw81_32/include
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/QTextStream \
 		ExitStatus.h \
 		sis_command.h \
-		SiSAdapter.h
+		SiSAdapter.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/QDateTime \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qdatetime.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\DoFirmwareUpdate.o DoFirmwareUpdate.cpp
 
 release/SiSAdapter.o: SiSAdapter.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QtGlobal \
@@ -268,7 +270,33 @@ release/SiSAdapter.o: SiSAdapter.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QtGl
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/qmutex.h \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/qnumeric.h \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/qversiontagging.h \
-		SiSAdapter.h
+		SiSAdapter.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/QDateTime \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qdatetime.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstring.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qchar.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qbytearray.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qrefcount.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qnamespace.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qarraydata.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringliteral.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringalgorithms.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringview.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringbuilder.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qshareddata.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qhash.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qiterator.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qlist.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qalgorithms.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qhashfunctions.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qpair.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qvector.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qcontainertools_impl.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qpoint.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qbytearraylist.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringlist.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qregexp.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qstringmatcher.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\SiSAdapter.o SiSAdapter.cpp
 
 release/main.o: main.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QCoreApplication \
@@ -357,6 +385,8 @@ release/main.o: main.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QCoreApplication
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/QTextStream \
 		ExitStatus.h \
 		SiSAdapter.h \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/QDateTime \
+		C:/Qt/5.15.2/mingw81_32/include/QtCore/qdatetime.h \
 		version.h \
 		sis_command.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\main.o main.cpp
