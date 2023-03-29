@@ -298,6 +298,8 @@ lb_Openfile:
         return exitCode;
     }
 
+    print_sep();
+
     if(bList == true)
         return EXIT_OK;
 
@@ -340,6 +342,7 @@ lb_Openfile:
     printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
 	
     /* 等待使用者確認y/Y後再更新 */
+    printf("\nThe process of updating the firmware will start.");
 	printf("\n");
     if (bNc == false) getUserInput();
 
@@ -706,7 +709,7 @@ void getUserInput() {
     char user_input;
 	
     while (1) {
-        printf("Continue the update process? (Y/n): ");
+        printf("Continue the process? (Y/n): ");
         user_input = getchar();
         while (getchar() != '\n'); // 清除緩Clear other char in buffer
         if (user_input == 'y' || user_input == 'Y') {
