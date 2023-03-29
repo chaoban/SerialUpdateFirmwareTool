@@ -137,7 +137,7 @@ bool sisSwitchCmdMode(QSerialPort* serial)
         return false;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(3);
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifndef _DBG_DISABLE_READCMD
@@ -334,7 +334,7 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
         return ret;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(8);
 
 //CHAOBAN TEST 為了驗證後續流程，先暫時關掉
 #ifdef _DBG_DISABLE_READCMD
@@ -380,7 +380,7 @@ bool sisResetCmd(QSerialPort* serial)
 	    return false;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(25);
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -422,7 +422,7 @@ bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 		return false;
 	}
 
-    msleep(_TX_RX_MS_);
+    msleep(10);
 
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
@@ -468,7 +468,7 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
         return false;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(6);
 
 #ifndef _DBG_DISABLE_READCMD
     quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
@@ -508,7 +508,7 @@ bool sisFlashRom(QSerialPort* serial)
 	    return false;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(160);
 	
 #ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};

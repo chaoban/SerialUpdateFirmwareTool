@@ -3,6 +3,7 @@
 
 //SIS DEBUG
 #define SIS_ERR         -1
+#define GR_ERROR        70
 
 #define EXIT_OK             0            /* Test pass or compare result is same */
 #define EXIT_ERR           32            /* Error occurs */

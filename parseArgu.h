@@ -33,9 +33,9 @@ typedef struct {
 
 arg_t args[] = {
 	{"-h",       "Display this help information."},
-    {"{file}",	 "Load the Binary firmware's name. Extension is named 'bin'."},
-    {"com[0-16]","Specify updating firmware through serial com port. Such as com3.\n"},
-    {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              --dbg={0|1}"},
+    {"@<file>",	 "Load/Update options from firmware. Extension name is 'bin'."},
+    {"com[0-16]","Specify updating firmware through serial com port.\n              Such as com3."},
+    {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              Ex. --dbg={0|1}"},
 	{"--force",  "Force update firmware without considering version."},
 	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."},
     {"-a",       "Automatically detect the serial port connected to the SiS device for firmware update."},
@@ -73,7 +73,7 @@ args_t param = {
 };
 
 void print_help() {
-    printf("Update SiS Device firmware by serial comX port from object <file>.\n");
+    printf("Update SiS Pen firmware by uart comX port from object<file>.\n");
     printf("Usage: sUpdateFw <file> <option(s)> | <com[0-16]>\n");
     printf(" At least one of the following switches must be given.\n");
     printf(" Options:\n");
