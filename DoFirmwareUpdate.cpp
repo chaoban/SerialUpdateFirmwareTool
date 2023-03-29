@@ -22,6 +22,7 @@
 extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
+
 /*
  * Serial Write Commands
  * Return 0 = OK, others failed
@@ -63,8 +64,9 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
         ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
-    //qDebug() << "bytesWritten=" << bytesWritten;
-
+#ifdef _CHAOBAN_TEST
+    qDebug() << "sisCmdTx bytes Written=" << bytesWritten;
+#endif
     return ret;
 }
 
@@ -109,13 +111,13 @@ bool sisSwitchCmdMode(QSerialPort* serial)
     int ret = EXIT_OK;
     uint8_t tmpbuf[MAX_BYTE] = {0};
     uint8_t sis_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 
-                                               0x00/*CRC16*/, 
-                                               CMD_SISXMODE, 
-                                               0x51, 0x09};
+                                            0x00/*CRC16*/,
+                                            CMD_SISXMODE,
+                                            0x51, 0x09};
     uint8_t sis_cmd_enable_diagnosis[CMD_SZ_XMODE] = {SIS_REPORTID, 
-                                                         0x00/*CRC16*/, 
-                                                         CMD_SISXMODE, 
-                                                         0x21, 0x01};
+                                                      0x00/*CRC16*/,
+                                                      CMD_SISXMODE,
+                                                      0x21, 0x01};
 /* 計算CRC並填入適當欄位內
  * 使用 sis_Calculate_Output_Crc( u8* buf, int len )
  * buf: 要計算的command封包
@@ -196,7 +198,7 @@ bool sisSwitchCmdMode(QSerialPort* serial)
  * POWER_MODE_SLEEP,  chip on the sleep mode.
  * Return:Ture is change power mode success.
  */
-bool sisChangeMode(enum SIS_817_POWER_MODE mode)
+bool sisChangeMode(enum SIS_POWER_MODE mode)
 {
 	bool ret = true;
     switch(mode)
@@ -221,7 +223,7 @@ bool sisChangeMode(enum SIS_817_POWER_MODE mode)
  * POWER_MODE_ACTIVE, chip always work on time.
  * POWER_MODE_SLEEP,  chip on the sleep mode.
  */
-enum SIS_817_POWER_MODE sis_get_fw_mode()
+enum SIS_POWER_MODE sis_get_fw_mode()
 {
     uint8_t tmpbuf[MAX_BYTE] = {0};
     switch(tmpbuf[10])
@@ -286,7 +288,8 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
 }
 
 //TODO: CHAOBAN TEST 
-//要讀0xA0004000+[14:15]的FW Version有用或沒用
+//要讀0xA0004000+[14:15]的FW Version有用或沒用?
+#if 0
 bool sisGetFwId(QSerialPort* serial, quint16 *fw_version)
 {
 	bool ret = true;
@@ -294,9 +297,10 @@ bool sisGetFwId(QSerialPort* serial, quint16 *fw_version)
     *fw_version = (tmpbuf[22] << 8) | (tmpbuf[23]);
     return ret;
 }
+#endif
 
 /*
- * Base:    4000 
+ * Base:    0x4000
  * 0-1:     Update Mark
  * 2  :     Chip ID
  * 3-5:     TP SIZE
@@ -319,7 +323,7 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
                                                ((ADDR_FW_INFO >> 8) & 0xff),
                                                ((ADDR_FW_INFO >> 16) & 0xff),
                                                ((ADDR_FW_INFO >> 24) & 0xff),
-                                              R_SIZE_LSB, R_SIZE_MSB};
+                                                R_SIZE_LSB, R_SIZE_MSB};
     //計算及填入CRC
     sis_cmd_get_FW_INFO[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_FW_INFO,
                                                             sizeof(sis_cmd_get_FW_INFO));

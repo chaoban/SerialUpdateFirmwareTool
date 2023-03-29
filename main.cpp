@@ -4,7 +4,6 @@
 #include <QSerialPort>
 #include <QDebug>
 #include <QFile>
-#include <QThread>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -20,27 +19,27 @@
 //#include "delay.h"
 //#pragma comment(lib, "Advapi32.lib")
 
-int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
-void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
+int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData);
 int testSerialPort(QString *ComPortName);
 int openBinary(QString path);
 int getFirmwareInfo(quint8 *sis_fw_data);
 int verifyFirmwareInfo(quint8 *sis_fw_data);
-int occupiedPortCount = 0;
-int timeOutPortCount = 0;
-bool mismatchKey = FALSE;
 void getUserInput();
 extern int scanSerialport();
 extern int getTimestamp();
 extern void msleep(unsigned int msec);
 extern void print_sep();
+extern void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 extern DateTime getCurrentDateTime();
 
+int occupiedPortCount = 0;
+int timeOutPortCount = 0;
+bool mismatchKey = FALSE;
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
-QByteArray FirmwareString = "";
+extern QByteArray FirmwareString;
 /* 建立FW資訊用 */
 firmwareMap binaryMap;
 
@@ -370,7 +369,7 @@ lb_Openfile:
     }else
         printf("Success.\n");
 	
-    QThread:msleep(400);    //msleep(400);
+    msleep(400);
 	
     printf("Enable II2C ... ");
     exitCode = GRDebugFunc(serial, EnableIIC);
@@ -610,35 +609,6 @@ int testSerialPort(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
-/*
- * 列印特定位址起的數值
- * quint8* sis_fw_data: // FW資料
- * const char* str,     // 要輸出的說明
- * quint32 address,     // 列印開始位置
- * int length,          // 列印長度(Bytes)
- * bool bcb             // 是否轉為BCB。true: BCB; false: 16進制
- */
-void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb) {
-
-    assert((address + length) <= (unsigned int)FirmwareString.length());
-    if ((address + length) > (unsigned int)FirmwareString.length()) {
-        return;
-    }
-
-    quint8 data[length];
-
-    printf("%s: ", str);
-    for (int i = 0; i < length; i++) {
-        data[i] = *(sis_fw_data + address + i);
-        if (bcb)
-            printf("%c", isprint(data[i]) ? data[i] : '.');
-        else
-            printf("%02x ", data[i]);
-    }
-
-    printf("\n");
-}
-
 #if 1
 int openBinary(QString path)
 {
@@ -765,7 +735,7 @@ int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData)
         return CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
 
-    QThread:msleep(2);
+    msleep(2);
 
     //if(serial.waitForReadyRead(-1)) {	//block until new data arrives
 	if(serial.waitForReadyRead(2000)) {	//block until new data arrives

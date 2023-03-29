@@ -10,13 +10,15 @@
 #define _GR_INIT_FLOW               1
 #define _PROCESSBAR                 1
 
-enum SIS_817_POWER_MODE {
+
+
+enum SIS_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
     POWER_MODE_FWCTRL = 0x50,
     POWER_MODE_ACTIVE = 0x51,
     POWER_MODE_SLEEP  = 0x52
 };
-enum SIS_817_POWER_MODE sis_get_fw_mode();
+enum SIS_POWER_MODE sis_get_fw_mode();
 
 struct firmwareMap {
     struct {
@@ -74,7 +76,7 @@ bool sisSwitchCmdMode(QSerialPort* serial);
 bool sisFlashRom(QSerialPort* serial);
 bool sisClearBootflag(QSerialPort* serial);
 bool sisResetCmd(QSerialPort* serial);
-bool sisChangeMode(enum SIS_817_POWER_MODE);
+bool sisChangeMode(enum SIS_POWER_MODE);
 bool sisGetFwId(QSerialPort* serial, quint16 *);
 bool sisUpdateCmd(QSerialPort* serial, unsigned int, int);
 bool sisWriteDataCmd(QSerialPort* serial, const quint8 *, unsigned int);

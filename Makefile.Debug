@@ -376,10 +376,6 @@ debug/main.o: main.cpp C:/Qt/5.15.2/mingw81_32/include/QtCore/QCoreApplication \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/QFile \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/qfile.h \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/qfiledevice.h \
-		C:/Qt/5.15.2/mingw81_32/include/QtCore/QThread \
-		C:/Qt/5.15.2/mingw81_32/include/QtCore/qthread.h \
-		C:/Qt/5.15.2/mingw81_32/include/QtCore/qdeadlinetimer.h \
-		C:/Qt/5.15.2/mingw81_32/include/QtCore/qelapsedtimer.h \
 		parseArgu.h \
 		DoFirmwareUpdate.h \
 		C:/Qt/5.15.2/mingw81_32/include/QtCore/QTextStream \

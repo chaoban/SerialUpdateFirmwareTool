@@ -1,21 +1,18 @@
 ﻿#ifndef SIS_COMMAND_H
 #define SIS_COMMAND_H
-typedef int ram_size_t;
 
-#define MAX_BYTE    64
-
-//SIS DEBUG
-#define SIS_ERR         -1
+#define MAX_BYTE                 64
 
 //SIS UPDATE FW
-#define RAM_SIZE        ((ram_size_t)_12K)
-#define PACK_SIZE		52
+typedef int ram_size_t;
+#define RAM_SIZE                ((ram_size_t)_12K)
+#define PACK_SIZE                52
 
 //SIS OP CODE
-#define BIT_SISID               0
-#define BIT_CRC                 1
-#define BIT_CMD                 2
-#define BIT_PALD                3
+#define BIT_SISID                 0
+#define BIT_CRC                   1
+#define BIT_CMD                   2
+#define BIT_PALD                  3
 
 //SIS CMD DEFINE
 #define CMD_SISFLASH           0x81
@@ -52,8 +49,9 @@ typedef int ram_size_t;
 #define BUF_PAYLOAD_PLACE       8
 #define INT_OUT_REPORT          0x09
 
-#define SIS_GENERAL_TIMEOUT     1000
 #define SIS_BOOTFLAG_P810       0x50383130
+/* Special Update Flag : Update by SerialPort */
+#define SERIAL_FLAG             0x5350 //ASCII: S P
 
 //GR UART CMD ID
 #define GR_CMD_ID               0x12
@@ -61,7 +59,6 @@ typedef int ram_size_t;
 
 #define SUCCESS                 0x0
 #define FAIL                    0x1
-
 
 //GR OP CODE
 #define BIT_UART_ID             0

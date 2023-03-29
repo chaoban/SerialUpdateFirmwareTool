@@ -9,6 +9,8 @@
 
 int getTimestamp();
 void print_sep();
+void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
+
 #ifdef _PROCESSBAR
 inline void progresBar(int totalProgress , int currentProgress, int progressBarWidth, int updateTime);
 #endif
@@ -17,9 +19,9 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
 #define SIS_ACK {0x1f, 0x53, 0x49, 0x53, 0x5f, 0x56, 0x52, 0x46, 0x5f, 0x41, 0x43, 0x4b}    //SIS_VRF_ACK
 #define SIS_VERIFY_LENGTH 12
 
-#define TIMEOUT_SERIAL  3000
-/* Special Update Flag : Update by SerialPort */
-#define SERIAL_FLAG     0x5350 //ASCII: S P
+#define TIMEOUT_SERIAL          3000
+#define SIS_GENERAL_TIMEOUT     1000
+
 
 struct DateTime {
     quint16 year;

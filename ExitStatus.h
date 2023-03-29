@@ -1,6 +1,9 @@
 ﻿#ifndef EXITSTATUS_H
 #define EXITSTATUS_H
 
+//SIS DEBUG
+#define SIS_ERR         -1
+
 #define EXIT_OK             0            /* Test pass or compare result is same */
 #define EXIT_ERR           32            /* Error occurs */
 #define EXIT_FAIL          33            /* Test fail or compare result is different */
