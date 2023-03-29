@@ -339,7 +339,7 @@ lb_Openfile:
     }
     printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
 	
-	/* 等待使用者確認後再更新 */
+    /* 等待使用者確認y/Y後再更新 */
 	printf("\n");
     if (bNc == false) getUserInput();
 
@@ -660,6 +660,7 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     //printAddrData(sis_fw_data, "FWUpdateTime", 0x40a0, 5, false);
     //printAddrData(sis_fw_data, "FWUpdateTool", 0x40a5, 2, true);
     //printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
+	printAddrData(sis_fw_data, "BootFlag", 0x1eff0, 4, false);
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
