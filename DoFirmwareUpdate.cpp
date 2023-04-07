@@ -145,7 +145,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_ERR;
 
-    while (serial->waitForReadyRead(1000)) {
+    while (serial->waitForReadyRead(2000)) {
         // 讀取serial port接收到的資料
         QByteArray data = serial->readAll();
 
@@ -553,15 +553,29 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
     }
 
     //msleep(100);//ref benson's doc
-    msleep(3000);//2023.4.7 chaoban test
+    msleep(1000);//2023.4.7 chaoban test
 
     uint8_t tmpbuf[MAX_BYTE] = {0};
+#if 0    // chaoban test 2023.4.7
+    int rcount = 0;
+    ret = EXIT_FAIL;
+    while (ret != EXIT_OK && rcount < 3) {
+        ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
+        if (ret == EXIT_OK)
+            break;
+
+        rcount++;
+        msleep(1000);
+    }
+
+    if (ret != EXIT_OK) return ret;
+#else
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
         printf("SiS READ DATA Failed - Read FW INFO (86), Error code: %d\n", ret);
         return ret;
     }
-
+#endif
     //printf("SiS Send Switch CMD: ");
     ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
@@ -571,7 +585,7 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
     }
 
 #ifdef _CHAOBAN_DRX
-    for (int i = 0; i < sizeof(tmpbuf); i++) {
+    for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
         printf("%02X ", tmpbuf[i]);
     }
 #endif
@@ -1157,7 +1171,7 @@ int sisUpdateFlow(QSerialPort* serial,
             count = 0;
             break;
         }
-        msleep(500);
+        msleep(1000);
     }
     while(1);
 #else
