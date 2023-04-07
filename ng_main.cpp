@@ -74,11 +74,6 @@ int main(int argc, char *argv[])
     QByteArray InitGR =         QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray EnableGRUart =   QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
 
-    QByteArray ChangeMode =     QByteArray::fromRawData("\x12\x04\x80\x05\x00\x09\x0d\x85\x51\x09", 10);
-    QByteArray GetFWInformation = QByteArray::fromRawData("\x12\x04\x80\x09\x00\x09\x79\x86\x00\x40\x00\xa0\x34\x00", 14);
-
-
-
     /*
      * 處理輸入的參數
      * 沒有接參數的時候，顯示(Help)指令說明
@@ -352,11 +347,12 @@ lb_Openfile:
 	printf("\n");
     if (bNc == false) getUserInput();
 
+#ifdef _GR_INIT_FLOW
     /*
      * Here we can disable GR Uart Debug function
      */
     printf("Disable GR Uart debug feature ... ");
-    exitCode = GRDebugFunc(serial, DisableGRUart, 100, 1);//Set Timeout=10, count=50
+    exitCode = GRDebugFunc(serial, DisableGRUart, 100, 50);//Set Timeout=10, count=50
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -364,7 +360,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Disable II2C ... ");
-    exitCode = GRDebugFunc(serial, DisableIIC, 100, 1);
+    exitCode = GRDebugFunc(serial, DisableIIC, 100, 2);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -372,7 +368,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Reset Hardware ... ");
-    exitCode = GRDebugFunc(serial, ResetHW, 100, 1);
+    exitCode = GRDebugFunc(serial, ResetHW, 100, 2);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -381,21 +377,24 @@ lb_Openfile:
 	
     msleep(400);
 	
+    // II2 ENABLE
     printf("Enable II2C ... ");
-    exitCode = GRDebugFunc(serial, EnableIIC, 100, 1);
+    exitCode = GRDebugFunc(serial, EnableIIC, 100, 10);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
     }else
         printf("Success.\n");
 
+    // CHECK IIC TRANSMISSION IS NORMAL
     printf("Initial Hardware ... ");
-    exitCode = GRDebugFunc(serial, InitGR, 100, 1);
+    exitCode = GRDebugFunc(serial, InitGR, 100, 10);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
     }else
         printf("Success.\n");
+#endif
 
     print_sep();
 
@@ -415,10 +414,6 @@ lb_Openfile:
     } else {
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
         printf("Update Firmware Failed\n");
-        /* Recovery the color of text in console */
-        SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        //chaoban test
-        return EXIT_FAIL;
     }
     /* Recovery the color of text in console */
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -728,9 +723,94 @@ void getUserInput() {
         }
     }
 }
+
 // writeData: 要下出去的Tx command
 // timeout: 單位為ms毫秒
 // count: 重式次數
+#ifdef _CHAOBAN_FIXRX
+int GRDebugFunc(QSerialPort& serial,
+                const QByteArray& writeData,
+                int timeout,
+                int retryCount)
+{
+    if (writeData.isEmpty()) {
+        qWarning() << "No GR Uart switch command.";
+        return EXIT_BADARGU;
+    }
+
+    msleep(100);
+
+    QByteArray readData = {0};
+    quint16 ackStatus = 0;
+    bool isDataValid = false;
+
+    for (int i = 0; i < retryCount; i++) {
+
+        ackStatus = 0;
+
+        msleep(timeout);
+
+        const qint64 bytesWritten = serial.write(writeData);
+
+        if (bytesWritten == -1) {
+            qCritical() << "Can not send command to serial port.";
+            return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+        } else if (bytesWritten != writeData.size()) {
+            qCritical() << "Send command to serial port but interrupt.";
+            return CT_EXIT_FAIL;
+        } else if (!serial.waitForBytesWritten(timeout)) {
+        qWarning() << "Serial port timeout.";
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+        }
+
+        if (serial.waitForReadyRead(100)) {
+            readData = serial.readAll();
+            //readData = serial.read(13);
+            unsigned char *rdata = (unsigned char *)readData.data();
+
+            if (readData.size() < 2 || readData.at(0) != 0x0e) {
+                qWarning() << "Invalid response received.";
+#ifdef _CHAOBAN_DGDB
+                qDebug() << "read data =" << readData.toHex();
+#endif
+                continue;
+            }
+
+            ackStatus = (rdata[BUF_ACK_MSB] << 8) | rdata[BUF_ACK_LSB];
+
+            if (ackStatus == 0xbeef) {
+                isDataValid = true;
+                break;
+            }
+
+            if (ackStatus == 0xdead) {
+#ifdef _CHAOBAN_DGDB 
+                printf("ackStatus= %x\n", ackStatus);
+                qDebug() << "read data size=" << readData.size() << ":" << readData.toHex();
+#endif
+            }
+        } else {
+            qWarning() << "Waiting for data timeout. Retry count:" << i;
+        }
+    }
+
+    if (isDataValid) {
+#ifdef _CHAOBAN_DGDB
+        //qInfo() << "Received ackStatus:" << QString::number(ackStatus, 16);
+#endif
+        return ackStatus;
+    } else {
+        qCritical() << "No valid response received after retrying " << retryCount << " times.";
+        return EXIT_FAIL;
+    }
+}
+
+
+#else
+
+
+
+
 int GRDebugFunc(QSerialPort& serial,
                 const QByteArray& writeData,
                 int timeout,
@@ -741,34 +821,28 @@ int GRDebugFunc(QSerialPort& serial,
         return EXIT_BADARGU;
     }
 
+    const qint64 bytesWritten = serial.write(writeData);
+
+    if (bytesWritten == -1) {
+        printf("error: Can not send command to serial port.\n");
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else if (bytesWritten != writeData.size()) {
+        printf("error: Send command to serial port but interrupt.\n");
+        return CT_EXIT_FAIL;
+    } else if (!serial.waitForBytesWritten(1000)) { // 等待最多n毫秒(ms)，以確保資料已經成功地寫入串列埠
+        printf("error: Serial port timeout.\n");
+        return CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    }
+
+    //msleep(10);
+    QByteArray readData;
+#if 1
     quint16 ackStatus;
     int retryCount = 0;
     bool isDataValid = false;
-    QByteArray readData = {0};
-
     while (!isDataValid && retryCount < count) {
-
-        msleep(timeout);
-
-        const qint64 bytesWritten = serial.write(writeData);
-
-        if (bytesWritten == -1) {
-            printf("error: Can not send command to serial port.\n");
-            return CT_EXIT_CHIP_COMMUNICATION_ERROR;
-        } else if (bytesWritten != writeData.size()) {
-            printf("error: Send command to serial port but interrupt.\n");
-            return CT_EXIT_FAIL;
-        } else if (!serial.waitForBytesWritten(1000)) { // 等待最多n毫秒(ms)，以確保資料已經成功地寫入串列埠
-            printf("error: Serial port timeout.\n");
-            return CT_EXIT_CHIP_COMMUNICATION_ERROR;
-        }
-
-        //msleep(10);
-
-        if (serial.waitForReadyRead(2000)) {
-//        if (serial.waitForReadyRead(timeout)) {
+        if (serial.waitForReadyRead(timeout)) {
             readData = serial.readAll();
-            //readData = serial.read(13);
 #ifdef _CHAOBAN_DGDB
             qDebug() << "read data size=" << readData.size();
             qDebug() << "read data =" << readData.toHex();
@@ -776,23 +850,10 @@ int GRDebugFunc(QSerialPort& serial,
             unsigned char *rdata = (unsigned char *)readData.data();
             if(rdata[0] == 0x0e)
             {
-
                 ackStatus = (rdata[BUF_ACK_MSB] << 8 | rdata[BUF_ACK_LSB]);
-#if 0
                 if ((ackStatus == 0xbeef) || (ackStatus == 0xdead)) {
                     isDataValid = true;
                 }
-#else
-
-                if (ackStatus == 0xbeef) {
-                    isDataValid = true;
-                }
-                else if(ackStatus == 0xdead) {
-                    retryCount++;
-                }
-#endif
-
-
             }
 /*
             if (readData.size() == 13 && readData.at(0) == 0x0e) {
@@ -808,7 +869,6 @@ int GRDebugFunc(QSerialPort& serial,
             retryCount++;
          }
     }
-
     if (isDataValid) {
 #ifdef _CHAOBAN_DGDB
         printf("ackStatus=%x\n", ackStatus);
@@ -818,5 +878,23 @@ int GRDebugFunc(QSerialPort& serial,
         printf("GRDebugFunc timeout or get incorrect RX data.\n");
         return EXIT_FAIL;
     }
+#else
+    //QByteArray expectedData = QByteArray::fromRawData("\x0e\x0e\x09\x00\x05\x80\x00", 7);
+    if (serial.waitForReadyRead(1000)) {
+        readData = serial.readAll();
+    }
+
+    //qDebug() << readData.toHex();
+    if (readData.size() == 7 &&
+        readData.at(0) == GR_EVENT_ID &&
+        readData.at(6) == SUCCESS) {
+        return EXIT_OK;
+    } else {
+        printf("GRDebugFunc Failed\n");
+        qDebug() << readData.toHex();
+        return CT_EXIT_FAIL;
+    }
+#endif
     return EXIT_OK;
 }
+#endif

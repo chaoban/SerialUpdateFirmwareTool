@@ -27,6 +27,51 @@ extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
  * Serial Write Commands
  * Return 0 = OK, others failed
  */
+#ifdef _CHAOBAN_FIXTX
+int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
+{
+    QTextStream standardOutput(stdout);
+    QByteArray writeData, appendData;
+    int ret = EXIT_OK;
+
+    // 將 unsigned char 數組轉換為 QByteArray
+    appendData = QByteArray::fromRawData(reinterpret_cast<char*>(wdata), wlength);
+
+    writeData.resize(5);
+    writeData[BIT_UART_ID] = GR_CMD_ID;
+    writeData[BIT_OP_LSB] = GR_OP_WR;
+    writeData[BIT_OP_MSB] = GR_OP;
+    writeData[BIT_SIZE_LSB] = (wlength & 0xff);
+    writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
+    writeData.append(appendData);
+
+#ifdef _CHAOBAN_DTX
+    qDebug() << "sisCmdTx 發送的資料：" << writeData.toHex();
+#endif
+
+    const qint64 bytesWritten = serial->write(writeData);
+
+    if (bytesWritten == -1) {
+        standardOutput << QObject::tr("無法發送命令到串列埠 %1，錯誤信息：%2")
+                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else if (bytesWritten != writeData.size()) {
+        standardOutput << QObject::tr("無法全部發送命令到串列埠 %1，錯誤信息：%2")
+                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else if (!serial->waitForBytesWritten(1000)) {
+        standardOutput << QObject::tr("操作超時或者發生錯誤，串列埠：%1，錯誤信息：%2")
+                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    }
+
+#ifdef _CHAOBAN_DTX
+    qDebug() << "sisCmdTx Send " << bytesWritten << " byts";
+#endif
+
+    return ret;
+}
+#else
 int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 {
     QTextStream standardOutput(stdout);
@@ -44,7 +89,7 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
     writeData.append(appendData);
 
-#ifdef _CHAOBAN_TEST
+#ifdef _CHAOBAN_DTX
     qDebug() << "sisCmdTx:" << writeData.toHex();
 #endif
 
@@ -64,16 +109,194 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
                           .arg(serial->portName(), serial->errorString()) << Qt::endl;
         ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
-#ifdef _CHAOBAN_TEST
+#ifdef _CHAOBAN_DTX
     qDebug() << "sisCmdTx bytes Written=" << bytesWritten;
 #endif
     return ret;
 }
-
+#endif
 /*
  * Serial Read Commands
  * Return 0 = OK, others failed
  */
+
+const unsigned char start[2] = {0x0e, 0x0e};
+QByteArray buffer;
+int waitCount = 0;
+int processMyData(QByteArray data);
+
+// 處理讀取到的資料
+int processMyData(QByteArray data) {
+    // 將QByteArray轉換為unsigned char指標
+    const unsigned char* myData = reinterpret_cast<const unsigned char*>(data.data());
+
+    //qDebug() << "Process Data: " << data.toHex();
+
+    quint16 status = myData[6] << 8 | myData[5];
+    printf("Ack: %x\n", status);
+
+    if (status != 0xbeef)
+        return EXIT_FAIL;
+    else
+        return EXIT_OK;
+}
+
+int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
+{
+    int ret = EXIT_ERR;
+
+    while (serial->waitForReadyRead(1000)) {
+        // 讀取serial port接收到的資料
+        QByteArray data = serial->readAll();
+
+#if 0
+        if (data.isEmpty()) {
+            waitCount++;
+            if (waitCount >= 10) {
+                qDebug() << "Timeout! No data received within 20 seconds.";
+                break;
+            }
+            continue;
+        }
+        waitCount = 0;
+#endif
+
+#ifdef _CHAOBAN_DRX
+        qDebug() << "Origin data:" <<data.toHex();
+#endif
+        // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
+        const unsigned char* p = reinterpret_cast<const unsigned char*>(data.data());
+        for (int i = 0; i < data.size(); i++) {
+            buffer.append(*(p + i));
+        }
+
+#ifdef _CHAOBAN_DRX
+        qDebug() << "buffer: " << buffer.toHex();
+#endif
+        // 搜索特殊標識出現的位置
+        int index = buffer.indexOf(reinterpret_cast<const char*>(start), 0);
+        //qDebug() << "index: " << index;
+
+        while (index >= 0) {
+            // 如果找到特殊標識，就根據長度L讀取資料
+            //qDebug() << "Get header index in " << index;
+            if (buffer.size() >= index + 4) {
+                int length = (buffer.at(index + 2)) | (buffer.at(index + 3) << 8);
+                if (buffer.size() >= index + 4 + length) {
+#if 1 //chaoban test 2023.4.7
+        // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
+                    QByteArray hexData = buffer.toHex();
+                    QByteArray tmp;
+                    for (int i = 0; i < hexData.size(); i += 2) {
+                        QString byte = hexData.mid(i, 2);
+                        tmp.append(static_cast<char>(byte.toInt(nullptr, 16)));
+                    }
+                    memcpy(rdata, tmp.constData(), tmp.size());
+#endif
+
+                    //qDebug() << "buffer.size() " << buffer.size();
+                    //qDebug() << "index + 4 + length " << index + 4 + length;
+                    // 讀取到完整的資料
+                    QByteArray myData = buffer.mid(index + 4, length);
+                    //qDebug() << "myData: " << myData.toHex();
+                    ret = processMyData(myData);
+                    // 從緩衝區中刪除已處理的資料
+                    buffer.remove(0, index + 4 + length);
+                    // 繼續搜索特殊標識
+                    index = buffer.indexOf(reinterpret_cast<const char*>(start), 2);
+
+                    if (ret == EXIT_OK) {
+                        return ret;
+                    }else
+                        break;
+                } else {
+                    // 資料還不完整，等待下一次接收
+                    qDebug() << "Data is not complete, waiting for next reception.";
+                    break;
+                }
+            } else {
+                // 資料還不完整，等待下一次接收
+                qDebug() << "Data is not complete, waiting for next reception.";
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+#if 0
+int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
+{
+    int ret = EXIT_OK;
+    if(!serial->waitForReadyRead(2000)) { // 等待最多 n 毫秒
+        qWarning() << "sisCmdRx waits for serial port data timeout:" << serial->errorString();
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else {
+        //QByteArray rbuffer = serial->read(rlength);
+        QByteArray rbuffer = serial->readAll();//read all可減少retry
+        QByteArray extractedData = {0};
+        QByteArray startPattern = QByteArray::fromHex("0e0e09");
+        int startIdx = rbuffer.indexOf(startPattern);  // 找到開頭的位置
+        if (startIdx >= 0) {
+            int n = 13;  // 要取出的資料長度
+            extractedData = rbuffer.mid(startIdx, n);  // 取出開頭為0x0e0e，長度為n的資料
+        }
+
+#ifdef _CHAOBAN_DRX
+        qDebug() << "Data received by sisCmdRx:" << extractedData.toHex();
+#endif
+        if (rdata != nullptr) {
+            memcpy(rdata, extractedData.constData(), extractedData.size());
+        }
+
+#if 0
+        printf("sisCmdRx rdata: ");
+        for (int i = 0; i < rlength; i++) {
+            printf("%x ", rdata[i]);
+        }
+        printf("\n");
+#endif
+    }
+    return ret;
+}
+#endif
+
+#if 0
+int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
+{
+    int ret = EXIT_OK;
+    if(!serial->waitForReadyRead(1500)) { // 等待最多 n 毫秒
+        qWarning() << "sisCmdRx waits for serial port data timeout:" << serial->errorString();
+        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
+    } else {
+        //QByteArray rbuffer = serial->read(rlength);
+        QByteArray rbuffer = serial->readAll();//read all可減少retry
+        QByteArray extractedData = {0};
+
+#ifdef _CHAOBAN_DRX
+        qDebug() << "Data received by sisCmdRx:" << rbuffer.toHex();
+        //qInfo() << "解析後的資料：";
+        //for (int i = 0; i < rbuffer.size(); i++) {
+        //    qInfo() << QString::number(rbuffer.at(i), 16);
+        //}
+#endif
+        if (rdata != nullptr) {
+            memcpy(rdata, rbuffer.constData(), rbuffer.size());
+        }
+#ifdef _CHAOBAN_DRX
+        printf("sisCmdRx rdata: ");
+        for (int i = 0; i < rlength; i++) {
+            printf("%x ", rdata[i]);
+        }
+        printf("\n");
+#endif
+    }
+    return ret;
+}
+#endif
+
+#if 0
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_OK;
@@ -91,7 +314,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
         rdata = (unsigned char *)rbuffer.data();
         rlength = rbuffer.size();
 
-#ifdef _CHAOBAN_TEST
+#ifdef _CHAOBAN_DRX
         qDebug() << "sisCmdRx:" << rbuffer.toHex();
         printf("rdata:");
         for (int i=0; i < rlength; i++) {
@@ -102,6 +325,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
     }
     return ret;
 }
+#endif
 
 /*
  * Change Mode
@@ -109,7 +333,8 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 bool sisSwitchCmdMode(QSerialPort* serial)
 {
     int ret = EXIT_OK;
-    uint8_t tmpbuf[MAX_BYTE] = {0};
+    //uint8_t tmpbuf[MAX_BYTE] = {0};
+    uint8_t tmpbuf[13] = {0};
     uint8_t sis_cmd_active[CMD_SZ_XMODE] = {SIS_REPORTID, 
                                             0x00/*CRC16*/,
                                             CMD_SISXMODE,
@@ -137,17 +362,16 @@ bool sisSwitchCmdMode(QSerialPort* serial)
         return false;
     }
 
-    msleep(3);
+    msleep(10);// ref. benson's doc
 
-//CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifndef _DBG_DISABLE_READCMD
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
         printf("SiS READ Switch CMD Failed - 85(PWR_CMD_ACTIVE), Error code:%d\n", ret);
         return false;
     }
+#ifdef VERIFYRX
     //printf("SiS Send Switch CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS Send Switch CMD Error code: %d\n", ret);
@@ -167,18 +391,15 @@ bool sisSwitchCmdMode(QSerialPort* serial)
 
     msleep(_TX_RX_MS_);
 
-//CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
-	return true;
-#else
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
         printf("SiS READ Switch CMD Failed - 85(ENABLE_DIAGNOSIS_MODE), Error code: %d\n", ret);
         return false;
     }
 
+#ifdef VERIFYRX
     //printf("SiS Send Switch CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf),tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS Send Switch CMD Error code: %d\n", ret);
@@ -259,11 +480,8 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
         return ret;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(10);//ref bonson's doc
 
-#ifdef _DBG_DISABLE_READCMD
-	ret = EXIT_OK;
-#else
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -272,7 +490,7 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
     }
 
     //printf("SiS Send Switch CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS Get Boot flag CMD Error code: %d\n", ret);
@@ -283,7 +501,6 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
                 (tmpbuf[BIT_RX_READ + 1] << 16) | 
                 (tmpbuf[BIT_RX_READ + 2] << 8) | 
                 (tmpbuf[BIT_RX_READ + 3]);
-#endif
     return ret;
 }
 
@@ -318,7 +535,8 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
     uint8_t R_SIZE_LSB = rlength & 0xff;
     uint8_t R_SIZE_MSB = (rlength >> 8) & 0xff;
 
-    uint8_t sis_cmd_get_FW_INFO[CMD_SZ_READ] = {SIS_REPORTID, 0x00,/*CRC*/CMD_SISREAD,
+    uint8_t sis_cmd_get_FW_INFO[CMD_SZ_READ] = {SIS_REPORTID, 0x00,/*CRC*/
+                                                CMD_SISREAD,
                                                (ADDR_FW_INFO & 0xff),
                                                ((ADDR_FW_INFO >> 8) & 0xff),
                                                ((ADDR_FW_INFO >> 16) & 0xff),
@@ -334,27 +552,39 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
         return ret;
     }
 
-    msleep(8);
+    //msleep(100);//ref benson's doc
+    msleep(3000);//2023.4.7 chaoban test
 
-//CHAOBAN TEST 為了驗證後續流程，先暫時關掉
-#ifdef _DBG_DISABLE_READCMD
-	ret = EXIT_OK;
-#else
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
-        printf("SiS READ DATA Faile - Read FW INFO (86), Error code: %d\n", ret);
+        printf("SiS READ DATA Failed - Read FW INFO (86), Error code: %d\n", ret);
         return ret;
     }
 
     //printf("SiS Send Switch CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS Send Get Firmware Info Error code: %d\n", ret);
         return ret;
     }
 
+#ifdef _CHAOBAN_DRX
+    for (int i = 0; i < sizeof(tmpbuf); i++) {
+        printf("%02X ", tmpbuf[i]);
+    }
+#endif
+
+
+#if 1 //2023.4.7   chaoban test
+    if (BIT_RX_READ + 2 < sizeof(tmpbuf)) *chip_id = tmpbuf[BIT_RX_READ + 2];
+    if (BIT_RX_READ + 4 < sizeof(tmpbuf)) *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
+    if (BIT_RX_READ + 9 < sizeof(tmpbuf)) *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
+    if (BIT_RX_READ + 11 < sizeof(tmpbuf)) *task_id = (tmpbuf[BIT_RX_READ + 10] << 8) | (tmpbuf[BIT_RX_READ + 11]);
+    if (BIT_RX_READ + 13 < sizeof(tmpbuf)) *chip_type = tmpbuf[BIT_RX_READ + 13];
+    if (BIT_RX_READ + 15 < sizeof(tmpbuf)) *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
+#else
     *chip_id = tmpbuf[BIT_RX_READ + 2];
     *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
     *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
@@ -380,9 +610,8 @@ bool sisResetCmd(QSerialPort* serial)
 	    return false;
     }
 
-    msleep(25);
+    msleep(25);//ref benson's doc
 
-#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -391,13 +620,12 @@ bool sisResetCmd(QSerialPort* serial)
     }
 
     //printf("SiS READ reset CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS READ reset CMD Error code: %d\n", ret);
         return false;
     }
-#endif
     return true;
 }
 
@@ -422,9 +650,8 @@ bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 		return false;
 	}
 
-    msleep(10);
+    msleep(10);//ref benson's doc
 
-#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
 	if (ret != EXIT_OK) {
@@ -433,13 +660,12 @@ bool sisUpdateCmd(QSerialPort* serial, unsigned int addr, int pack_num)
 	}
 
     //printf("SiS READ write CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS Update CMD Failed - Error code: %d\n", ret);
         return false;
     }
-#endif
     return true;
 }
 
@@ -468,9 +694,8 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
         return false;
     }
 
-    msleep(6);
+    msleep(6);//ref benson's doc
 
-#ifndef _DBG_DISABLE_READCMD
     quint8 tmpbuf[MAX_BYTE] = {0}; /* MAX_BYTE = 64 */
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -479,13 +704,12 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
     }
 
     //printf("SiS READ write CMD: ");
-    int result = verifyRxData(tmpbuf);
+    int result = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(result) {
         printf("SiS Write Data Failed - Error code: %d\n", result);
         return false;
     }
-#endif
 
     free(sis_cmd_84);
     return true;
@@ -508,9 +732,8 @@ bool sisFlashRom(QSerialPort* serial)
 	    return false;
     }
 
-    msleep(160);
+    msleep(160);//ref benson's doc
 	
-#ifndef _DBG_DISABLE_READCMD
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -519,13 +742,12 @@ bool sisFlashRom(QSerialPort* serial)
     }
 
     //printf("SiS READ flash CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS flash CMD Failed - Error code: %d\n", ret);
         return false;
     }
-#endif
 
     return true;
 }
@@ -836,11 +1058,8 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
         return false;
     }
 
-    msleep(_TX_RX_MS_);
+    msleep(10);//ref benson's doc
 
-#ifdef _DBG_DISABLE_READCMD
-	return true;
-#else
     uint8_t tmpbuf[MAX_BYTE] = {0};
     ret = sisCmdRx(serial, sizeof(tmpbuf), tmpbuf);
     if (ret != EXIT_OK) {
@@ -849,7 +1068,7 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
     }
 
     //printf("SiS READ flash CMD: ");
-    ret = verifyRxData(tmpbuf);
+    ret = verifyRxData(sizeof(tmpbuf), tmpbuf);
     //if (result == true) printf("Success\n");
     if(ret != EXIT_OK) {
         printf("SiS read Bootloader ID Failed - Error code: %d\n", ret);
@@ -858,7 +1077,6 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
 
     *bootloader_version = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
     *bootloader_crc = (tmpbuf[12] << 24) | (tmpbuf[13] << 16) | (tmpbuf[14] << 8) | (tmpbuf[15]);
-#endif
     return true;
 }
 
@@ -892,32 +1110,63 @@ int sisUpdateFlow(QSerialPort* serial,
     quint32 bin_bootflag = 0x00000000;
     int ret = -1;
 	bool bRet = true;
+    int count = 0;
 
     /*
      * Switch FW Mode
      */
-#if 1
     printf("Switch Firmware Mode.\n");
+#ifdef _CHAOBAN_RETRY
+    do{
+        count ++;
+        bRet = sisSwitchCmdMode(serial);
+        if (bRet == true) {
+            printf("Switch Firmware Mode Success in %i times.\n", count);
+            count = 0;
+            break;
+        }
+        msleep(10);
+        if (count > 30) {
+            printf("Switch FW Mode retry %i times still failed.\n", count);
+            return CT_EXIT_FAIL;
+        }
+    }
+    while(1);
+#else
 	bRet = sisSwitchCmdMode(serial);
     if (bRet == false) {
         qDebug() << "Error: sisSwitchCmdMode Fails";
         return CT_EXIT_FAIL;
     }
-#else
-    printf("Temporarily canceled Switch FW Mode.\n");
 #endif
     /*
      * Get FW Information
      */
-#if 1
     printf("Get Firmware Information.\n");
+#if 1
+#ifdef _CHAOBAN_RETRY
+    do{
+        count ++;
+        if (count >= 10) {
+            printf("Get Firmware Information try %i times still failed.\n", count);
+            return CT_EXIT_FAIL;
+        }
+        ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+        if (ret == EXIT_OK) {
+            printf("Get Firmware Information Success in %i times.\n", count);
+            count = 0;
+            break;
+        }
+        msleep(500);
+    }
+    while(1);
+#else
     ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
     if (ret) {
         printf("SiS get fw info failed. Error code: %d\n", ret);
 		return ret;
     }
-#else
-    printf("Temporarily canceled Get FW Information.\n");
+#endif
 #endif
 
 #if 1
@@ -972,15 +1221,29 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get BootFlag
      */
-#if 1
     printf("Get BootFlag.\n");
+#ifdef _CHAOBAN_RETRY
+    do {
+        count ++;
+        ret = sisGetBootflag(serial, &bootflag);
+        if (ret == EXIT_OK) {
+            printf("Get BootFlag Success in %i times.\n", count);
+            count = 0;
+            break;
+        }
+        msleep(100);
+        if (count > 10) {
+            printf("Get BootFlag retry %i times still failed.\n", count);
+            return CT_EXIT_FAIL;
+        }
+    }
+    while(1);
+#else
     ret = sisGetBootflag(serial, &bootflag);
     if (ret) {
         printf("SiS get bootflag failed, Error code: %d\n", ret);
 		return ret;
     }
-#else
-    printf("Temporarily canceled get bootflag.\n");
 #endif
 
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
@@ -1107,9 +1370,36 @@ int sisUpdateFlow(QSerialPort* serial,
 /*
  * Return 0 = OK, others faled
  */
-int verifyRxData(uint8_t *buffer)
+int verifyRxData(int length, uint8_t *buffer)
 {
     int ret = EXIT_OK;
+    quint16 ackStatus = 0;
+
+#ifdef _CHAOBAN_DVERRX
+    printf("verifyRxData buffer: ");
+    for (int i = 0; i < length; i++) {
+        printf("%x ", buffer[i]);
+    }
+    printf("\n");
+#endif
+
+    ackStatus = (buffer[BUF_ACK_MSB] << 8) | buffer[BUF_ACK_LSB];
+
+#ifdef _CHAOBAN_DVERRX
+    printf("verifyRxData ackStatus:%x\n", ackStatus);
+#endif
+
+    if (ackStatus == 0xbeef)
+        ret =  EXIT_OK;
+    else if (ackStatus == 0xdead) {
+        printf("Return NACK\n");
+        ret = CT_EXIT_FAIL;
+    } else {
+        printf("Return Unknow\n");
+        ret = CT_EXIT_FAIL;
+    }
+
+/*
     if (buffer[BUF_ACK_LSB] == BUF_NACK_L && buffer[BUF_ACK_MSB] == BUF_NACK_H) {
         printf("Return NACK\n");
         ret = CT_EXIT_FAIL;
@@ -1117,6 +1407,7 @@ int verifyRxData(uint8_t *buffer)
         printf("Return Unknow\n");
         ret = CT_EXIT_FAIL;
     }
-
+*/
     return ret;
+
 }

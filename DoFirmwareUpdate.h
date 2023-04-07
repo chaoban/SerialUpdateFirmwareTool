@@ -5,10 +5,16 @@
 #include <QSerialPort>
 #include "ExitStatus.h"
 
-#define _CHAOBAN_TEST               1
-//#define _DBG_DISABLE_READCMD        1
-#define _GR_INIT_FLOW               1
+#define _CHAOBAN_DTX               1
+#define _CHAOBAN_DRX               1
+#define _CHAOBAN_DGDB               1
+#define _CHAOBAN_DVERRX             1
+
 #define _PROCESSBAR                 1
+
+#define _CHAOBAN_FIXTX				1
+#define _CHAOBAN_RETRY              1
+
 
 
 
@@ -85,7 +91,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader);
 bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *, quint32 *);
 int sisCmdTx(QSerialPort* serial, int , unsigned char *);
 int sisCmdRx(QSerialPort* serial, int , unsigned char *);
-int verifyRxData(uint8_t *buffer);
+int verifyRxData(int length, uint8_t *buffer);
 int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bUpdateBootloader_auto, bool bForceUpdate, bool bJump);
 int sisGetBootflag(QSerialPort* serial, quint32 *);
 int sisGetFwInfo(QSerialPort* serial, quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
