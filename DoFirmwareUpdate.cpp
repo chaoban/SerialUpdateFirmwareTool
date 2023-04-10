@@ -133,14 +133,16 @@ int processMyData(QByteArray data) {
     //qDebug() << "Process Data: " << data.toHex();
 
     quint16 status = myData[6] << 8 | myData[5];
+#ifdef _CHAOBAN_DRX
     printf("Ack: %x\n", status);
+#endif
 
     if (status != 0xbeef)
         return EXIT_FAIL;
     else
         return EXIT_OK;
 }
-
+#if 1
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_ERR;
@@ -148,12 +150,13 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
     while (serial->waitForReadyRead(2000)) {
         // 讀取serial port接收到的資料
         QByteArray data = serial->readAll();
+        //QByteArray data = serial->read(rlength);//chaoban test 2023.4.7
 
 #if 0
         if (data.isEmpty()) {
             waitCount++;
             if (waitCount >= 10) {
-                qDebug() << "Timeout! No data received within 20 seconds.";
+                qDebug() << "Timeout! No data received within X seconds.";
                 break;
             }
             continue;
@@ -184,7 +187,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                 int length = (buffer.at(index + 2)) | (buffer.at(index + 3) << 8);
                 if (buffer.size() >= index + 4 + length) {
 #if 1 //chaoban test 2023.4.7
-        // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
+                    // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
                     QByteArray hexData = buffer.toHex();
                     QByteArray tmp;
                     for (int i = 0; i < hexData.size(); i += 2) {
@@ -193,7 +196,6 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                     }
                     memcpy(rdata, tmp.constData(), tmp.size());
 #endif
-
                     //qDebug() << "buffer.size() " << buffer.size();
                     //qDebug() << "index + 4 + length " << index + 4 + length;
                     // 讀取到完整的資料
@@ -203,7 +205,8 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                     // 從緩衝區中刪除已處理的資料
                     buffer.remove(0, index + 4 + length);
                     // 繼續搜索特殊標識
-                    index = buffer.indexOf(reinterpret_cast<const char*>(start), 2);
+                    // chaoban test remove 2023.4.7
+                    //index = buffer.indexOf(reinterpret_cast<const char*>(start), 2);
 
                     if (ret == EXIT_OK) {
                         return ret;
@@ -219,12 +222,15 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                 qDebug() << "Data is not complete, waiting for next reception.";
                 break;
             }
+
+            // chaoban test add 2023.4.7
+            index = buffer.indexOf(reinterpret_cast<const char*>(start), 0);
         }
     }
 
     return ret;
 }
-
+#endif
 #if 0
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
@@ -266,7 +272,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_OK;
-    if(!serial->waitForReadyRead(1500)) { // 等待最多 n 毫秒
+    if(!serial->waitForReadyRead(3000)) { // 等待最多 n 毫秒
         qWarning() << "sisCmdRx waits for serial port data timeout:" << serial->errorString();
         ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
     } else {
@@ -497,10 +503,29 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
         return ret;
     }
 
+
+#ifdef _CHAOBAN_DRX //chaoban test 2023.4.7
+    printf("tmpbuf:");
+    for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
+        printf("%02X ", tmpbuf[i]);
+    }
+    printf("\n");
+#endif
+
+#if 1 //chaoban test 2023.4.7
+    if (BIT_RX_READ + 3 < sizeof(tmpbuf)) {
+        *bootflag = (tmpbuf[BIT_RX_READ] << 24) |
+                    (tmpbuf[BIT_RX_READ + 1] << 16) |
+                    (tmpbuf[BIT_RX_READ + 2] << 8) |
+                    (tmpbuf[BIT_RX_READ + 3]);
+    }
+#else
     *bootflag = (tmpbuf[BIT_RX_READ] << 24) | 
                 (tmpbuf[BIT_RX_READ + 1] << 16) | 
                 (tmpbuf[BIT_RX_READ + 2] << 8) | 
                 (tmpbuf[BIT_RX_READ + 3]);
+#endif
+
     return ret;
 }
 
@@ -528,7 +553,8 @@ bool sisGetFwId(QSerialPort* serial, quint16 *fw_version)
  * 14-15:   FW Version
  * Return 0 = OK, others failed
 */
-int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
+//int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32 *tp_vendor_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
+int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version)
 {
     int ret = EXIT_OK;
     int rlength = READ_SIZE;
@@ -584,24 +610,28 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint32 *tp_size, quint32
         return ret;
     }
 
-#ifdef _CHAOBAN_DRX
+#if 0
+	printf("tmpbuf:");
     for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
         printf("%02X ", tmpbuf[i]);
     }
+	printf("\n");
 #endif
 
 
 #if 1 //2023.4.7   chaoban test
+    printf("Get some parameters from device.\n");
     if (BIT_RX_READ + 2 < sizeof(tmpbuf)) *chip_id = tmpbuf[BIT_RX_READ + 2];
-    if (BIT_RX_READ + 4 < sizeof(tmpbuf)) *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
-    if (BIT_RX_READ + 9 < sizeof(tmpbuf)) *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
+    //if (BIT_RX_READ + 4 < sizeof(tmpbuf)) *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
+    //if (BIT_RX_READ + 9 < sizeof(tmpbuf)) *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
     if (BIT_RX_READ + 11 < sizeof(tmpbuf)) *task_id = (tmpbuf[BIT_RX_READ + 10] << 8) | (tmpbuf[BIT_RX_READ + 11]);
     if (BIT_RX_READ + 13 < sizeof(tmpbuf)) *chip_type = tmpbuf[BIT_RX_READ + 13];
     if (BIT_RX_READ + 15 < sizeof(tmpbuf)) *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
+    printf("Get some parameters success.\n");
 #else
     *chip_id = tmpbuf[BIT_RX_READ + 2];
-    *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
-    *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
+    //*tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
+    //*tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
     *task_id = (tmpbuf[BIT_RX_READ + 10] << 8) | (tmpbuf[BIT_RX_READ + 11]);
     *chip_type = tmpbuf[BIT_RX_READ + 13];
     *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
@@ -1126,6 +1156,7 @@ int sisUpdateFlow(QSerialPort* serial,
 	bool bRet = true;
     int count = 0;
 
+#if 1
     /*
      * Switch FW Mode
      */
@@ -1153,25 +1184,28 @@ int sisUpdateFlow(QSerialPort* serial,
         return CT_EXIT_FAIL;
     }
 #endif
+#endif
+    //msleep(2000);//chaoban test 2023.4.7
     /*
      * Get FW Information
      */
     printf("Get Firmware Information.\n");
-#if 1
+#if 0
 #ifdef _CHAOBAN_RETRY
+    count = 0;
     do{
         count ++;
-        if (count >= 10) {
+        if (count >= 20) {
             printf("Get Firmware Information try %i times still failed.\n", count);
             return CT_EXIT_FAIL;
         }
-        ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+        //ret = sisGetFwInfo(serial, &chip_id, &tp_size, &tp_vendor_id, &task_id, &chip_type, &fw_version);
+        ret = sisGetFwInfo(serial, &chip_id, &task_id, &chip_type, &fw_version);
         if (ret == EXIT_OK) {
             printf("Get Firmware Information Success in %i times.\n", count);
-            count = 0;
             break;
         }
-        msleep(1000);
+        msleep(500);
     }
     while(1);
 #else
@@ -1231,25 +1265,25 @@ int sisUpdateFlow(QSerialPort* serial,
 
       //chaoban test marked
       //msleep(2000);
-
+#if 0
     /*
      * Get BootFlag
      */
     printf("Get BootFlag.\n");
 #ifdef _CHAOBAN_RETRY
+    count = 0;
     do {
         count ++;
-        ret = sisGetBootflag(serial, &bootflag);
-        if (ret == EXIT_OK) {
-            printf("Get BootFlag Success in %i times.\n", count);
-            count = 0;
-            break;
-        }
-        msleep(100);
         if (count > 10) {
             printf("Get BootFlag retry %i times still failed.\n", count);
             return CT_EXIT_FAIL;
         }
+        ret = sisGetBootflag(serial, &bootflag);
+        if (ret == EXIT_OK) {
+            printf("Get BootFlag Success in %i times.\n", count);
+            break;
+        }
+        msleep(1000);
     }
     while(1);
 #else
@@ -1284,12 +1318,12 @@ int sisUpdateFlow(QSerialPort* serial,
 
     //msleep(2000);
     //msleep(1000); //chaoban test
-
+#endif
     /*
      * Get Bootloader ID and Bootloader CRC
      * sisGetBootloaderId_Crc
      */
-#if 1
+#if 0
     printf("Get Bootloader ID and Bootloader CRC.\n");
     bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (bRet == false) {
@@ -1303,7 +1337,7 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Check Bootloader ID and Bootloader CRC
      */
-#if 1
+#if 0
     printf("Check Bootloader ID and Bootloader CRC.\n");
 
     //bootloader id
@@ -1358,7 +1392,7 @@ int sisUpdateFlow(QSerialPort* serial,
             || (bForceUpdate == true)) 
 	{ 
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
-        printf("START FIRMWARE UPDATE!!, PLEASE DO NOT INTERRUPT IT.\n");
+        printf("START FIRMWARE UPDATE, PLEASE DO NOT INTERRUPT IT.\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
         bRet = burningCode(serial, sis_fw_data, bUpdateBootloader);

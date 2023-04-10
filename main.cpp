@@ -356,7 +356,7 @@ lb_Openfile:
      * Here we can disable GR Uart Debug function
      */
     printf("Disable GR Uart debug feature ... ");
-    exitCode = GRDebugFunc(serial, DisableGRUart, 100, 1);//Set Timeout=10, count=50
+    exitCode = GRDebugFunc(serial, DisableGRUart, 100, 2);//Set Timeout=10, count=50
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -364,7 +364,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Disable II2C ... ");
-    exitCode = GRDebugFunc(serial, DisableIIC, 100, 1);
+    exitCode = GRDebugFunc(serial, DisableIIC, 100, 2);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -372,7 +372,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Reset Hardware ... ");
-    exitCode = GRDebugFunc(serial, ResetHW, 100, 1);
+    exitCode = GRDebugFunc(serial, ResetHW, 100, 2);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -382,7 +382,7 @@ lb_Openfile:
     msleep(400);
 	
     printf("Enable II2C ... ");
-    exitCode = GRDebugFunc(serial, EnableIIC, 100, 1);
+    exitCode = GRDebugFunc(serial, EnableIIC, 100, 2);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -390,7 +390,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Initial Hardware ... ");
-    exitCode = GRDebugFunc(serial, InitGR, 100, 1);
+    exitCode = GRDebugFunc(serial, InitGR, 100, 10);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
