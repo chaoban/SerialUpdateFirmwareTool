@@ -5,18 +5,22 @@
 #include <QSerialPort>
 #include "ExitStatus.h"
 
+/* 輸出一些debug訊息用 */
 //#define _CHAOBAN_DTX               1
 //#define _CHAOBAN_DRX               1
 //#define _CHAOBAN_DGDB               1
 //#define _CHAOBAN_DVERRX             1
 
+/* 顯示進度條 */
 #define _PROCESSBAR                 1
 
-#define _CHAOBAN_FIXTX				1
+/* 修改的機制 */
 #define _CHAOBAN_RETRY              1
 
-
-
+/* 開關一些流程 */
+//#define _GETFWINFO          1
+//#define _GETBOOTFLAG        1
+//#define _GETBTIDCRC         1
 
 enum SIS_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,

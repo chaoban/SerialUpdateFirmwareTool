@@ -28,6 +28,7 @@ typedef struct {
 	bool r;
     bool s;
 	bool v;
+    int  V;
     bool w;
 } args_t;
 
@@ -48,7 +49,8 @@ arg_t args[] = {
     {"-r",       "Reserve RO data."},
     {"-s",       "Scan and list all available serial ports in the host."},
     {"-v",		 "Display version and build information."},
-    {"-w",       "Set the Wait time."}
+    {"-w",       "Set the Wait time."},
+    {"V",		 "Display Verbose debug message.The higher the level, the more debug messages are displayed.\n              Ex. V={1|2|3}"}
 };
 
 args_t param = {
@@ -69,6 +71,7 @@ args_t param = {
     .r = 		false,
     .s = 		false,
     .v = 		false,
+    .V = 0,
     .w = 		false
 };
 
@@ -160,8 +163,7 @@ int process_args(int argc, char *argv[], args_t* param) {
                 return -1;
             }
         } // TODO: 需要優化，判斷COM後再抓後面數字即可
-        else
-        if(strcmp(argv[i], "com1") == 0 || strcmp(argv[i], "com2") == 0 || strcmp(argv[i], "com3") == 0 ||
+        else if(strcmp(argv[i], "com1") == 0 || strcmp(argv[i], "com2") == 0 || strcmp(argv[i], "com3") == 0 ||
             strcmp(argv[i], "com4") == 0 || strcmp(argv[i], "com5") == 0 || strcmp(argv[i], "com6") == 0 ||
             strcmp(argv[i], "com7") == 0 || strcmp(argv[i], "com8") == 0 || strcmp(argv[i], "com9") == 0 ||
             strcmp(argv[i], "com10") == 0 || strcmp(argv[i], "com11") == 0 || strcmp(argv[i], "com12") == 0 ||
@@ -169,8 +171,23 @@ int process_args(int argc, char *argv[], args_t* param) {
             strcmp(argv[i], "com16") == 0)
         {
             strcpy(param->com, argv[i]);
-        }
-        else
+        } else if(strncmp(argv[i], "V", 1) == 0) {
+            char* dbg_str = argv[i] + 1;
+            if(strcmp(dbg_str, "=1") == 0) {
+                param->V = 1;
+            }
+            else if(strcmp(dbg_str, "=2") == 0) {
+                param->V = 2;
+            }
+            else if(strcmp(dbg_str, "=3") == 0) {
+                param->V = 3;
+            }
+            else {
+                param->V = 0;
+                //printf("Invalid argument for --dbg option. Valid values are = [0|1].\n");
+                //return -1;
+            }
+        } else
         {
             char *ext = strrchr(argv[i], '.');      // 取得argv中最後一個 '.' 的位置
             if(ext && strcmp(ext, ".bin") == 0) {   // 如果ext不為NULL且與".bin"相同，則argv為副檔名為bin的名稱

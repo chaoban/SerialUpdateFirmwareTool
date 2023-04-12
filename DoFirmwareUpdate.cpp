@@ -18,22 +18,23 @@
 #include "DoFirmwareUpdate.h"
 #include "sis_command.h"
 #include "SiSAdapter.h"
-
+QByteArray buffer;
+const unsigned char start[2] = {0x0e, 0x0e};
+int waitCount = 0;
+int processMyData(QByteArray data);
 extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
-
+extern int GLOBAL_DEBUG_VERBOSE;
 /*
  * Serial Write Commands
  * Return 0 = OK, others failed
  */
-#ifdef _CHAOBAN_FIXTX
 int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
 {
     QTextStream standardOutput(stdout);
     QByteArray writeData, appendData;
     int ret = EXIT_OK;
-
     // 將 unsigned char 數組轉換為 QByteArray
     appendData = QByteArray::fromRawData(reinterpret_cast<char*>(wdata), wlength);
 
@@ -45,8 +46,9 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
     writeData.append(appendData);
 
-#ifdef _CHAOBAN_DTX
-    qDebug() << "sisCmdTx 發送的資料：" << writeData.toHex();
+#ifdef _CHAOBAN_DX
+	if (GLOBAL_DEBUG_VERBOSE >= 3)
+		qDebug() << "sisCmdTx 發送的資料：" << writeData.toHex();
 #endif
 
     const qint64 bytesWritten = serial->write(writeData);
@@ -66,83 +68,32 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     }
 
 #ifdef _CHAOBAN_DTX
-    qDebug() << "sisCmdTx Send " << bytesWritten << " byts";
-#endif
-
-    return ret;
-}
-#else
-int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
-{
-    QTextStream standardOutput(stdout);
-    QByteArray writeData, appendData;
-    int ret = EXIT_OK;
-    appendData = QByteArray::fromRawData((char*)wdata, wlength);
-    //appendData = QByteArray((char*)wdata, wlength);
-    //appendData = QByteArray(reinterpret_cast<char*>(wdata), wlength);
-
-    writeData.resize(5);
-    writeData[BIT_UART_ID] = GR_CMD_ID;
-    writeData[BIT_OP_LSB] = GR_OP_WR;
-    writeData[BIT_OP_MSB] = GR_OP;
-    writeData[BIT_SIZE_LSB] = (wlength & 0xff);
-    writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
-    writeData.append(appendData);
-
-#ifdef _CHAOBAN_DTX
-    qDebug() << "sisCmdTx:" << writeData.toHex();
-#endif
-
-    const qint32 bytesWritten = serial->write(writeData);
-
-    if (bytesWritten == -1) {
-        standardOutput << QObject::tr("Failed to send the command to port %1, error: %2")
-                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    } else if (bytesWritten != writeData.size()) {
-        standardOutput << QObject::tr("Failed to send all the command to port %1, error: %2")
-                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    } else if (!serial->waitForBytesWritten(1000)) {
-        standardOutput << QObject::tr("Operation timed out or an error "
-                                      "occurred for port %1, error: %2")
-                          .arg(serial->portName(), serial->errorString()) << Qt::endl;
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    }
-#ifdef _CHAOBAN_DTX
-    qDebug() << "sisCmdTx bytes Written=" << bytesWritten;
+	if (GLOBAL_DEBUG_VERBOSE >= 3)
+		qDebug() << "sisCmdTx Send " << bytesWritten << " byts";
 #endif
     return ret;
 }
-#endif
-/*
- * Serial Read Commands
- * Return 0 = OK, others failed
- */
-
-const unsigned char start[2] = {0x0e, 0x0e};
-QByteArray buffer;
-int waitCount = 0;
-int processMyData(QByteArray data);
 
 // 處理讀取到的資料
 int processMyData(QByteArray data) {
     // 將QByteArray轉換為unsigned char指標
     const unsigned char* myData = reinterpret_cast<const unsigned char*>(data.data());
-
     //qDebug() << "Process Data: " << data.toHex();
-
     quint16 status = myData[6] << 8 | myData[5];
 #ifdef _CHAOBAN_DRX
-    printf("Ack: %x\n", status);
+	if (GLOBAL_DEBUG_VERBOSE >= 2)
+		printf("Ack: %x\n", status);
 #endif
-
     if (status != 0xbeef)
         return EXIT_FAIL;
     else
         return EXIT_OK;
 }
-#if 1
+
+/*
+ * Serial Read Commands
+ * Return 0 = OK, others failed
+ */
 int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_ERR;
@@ -151,7 +102,6 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
         // 讀取serial port接收到的資料
         QByteArray data = serial->readAll();
         //QByteArray data = serial->read(rlength);//chaoban test 2023.4.7
-
 #if 0
         if (data.isEmpty()) {
             waitCount++;
@@ -165,7 +115,8 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 #endif
 
 #ifdef _CHAOBAN_DRX
-        qDebug() << "Origin data:" <<data.toHex();
+		if (GLOBAL_DEBUG_VERBOSE >= 2)
+			qDebug() << "Origin data:" <<data.toHex();
 #endif
         // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
         const unsigned char* p = reinterpret_cast<const unsigned char*>(data.data());
@@ -174,7 +125,8 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
         }
 
 #ifdef _CHAOBAN_DRX
-        qDebug() << "buffer: " << buffer.toHex();
+		if (GLOBAL_DEBUG_VERBOSE >= 2)
+			qDebug() << "buffer: " << buffer.toHex();
 #endif
         // 搜索特殊標識出現的位置
         int index = buffer.indexOf(reinterpret_cast<const char*>(start), 0);
@@ -204,10 +156,6 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                     ret = processMyData(myData);
                     // 從緩衝區中刪除已處理的資料
                     buffer.remove(0, index + 4 + length);
-                    // 繼續搜索特殊標識
-                    // chaoban test remove 2023.4.7
-                    //index = buffer.indexOf(reinterpret_cast<const char*>(start), 2);
-
                     if (ret == EXIT_OK) {
                         return ret;
                     }else
@@ -222,116 +170,13 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                 qDebug() << "Data is not complete, waiting for next reception.";
                 break;
             }
-
-            // chaoban test add 2023.4.7
+            // 繼續搜索特殊標識
             index = buffer.indexOf(reinterpret_cast<const char*>(start), 0);
         }
     }
 
     return ret;
 }
-#endif
-#if 0
-int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
-{
-    int ret = EXIT_OK;
-    if(!serial->waitForReadyRead(2000)) { // 等待最多 n 毫秒
-        qWarning() << "sisCmdRx waits for serial port data timeout:" << serial->errorString();
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    } else {
-        //QByteArray rbuffer = serial->read(rlength);
-        QByteArray rbuffer = serial->readAll();//read all可減少retry
-        QByteArray extractedData = {0};
-        QByteArray startPattern = QByteArray::fromHex("0e0e09");
-        int startIdx = rbuffer.indexOf(startPattern);  // 找到開頭的位置
-        if (startIdx >= 0) {
-            int n = 13;  // 要取出的資料長度
-            extractedData = rbuffer.mid(startIdx, n);  // 取出開頭為0x0e0e，長度為n的資料
-        }
-
-#ifdef _CHAOBAN_DRX
-        qDebug() << "Data received by sisCmdRx:" << extractedData.toHex();
-#endif
-        if (rdata != nullptr) {
-            memcpy(rdata, extractedData.constData(), extractedData.size());
-        }
-
-#if 0
-        printf("sisCmdRx rdata: ");
-        for (int i = 0; i < rlength; i++) {
-            printf("%x ", rdata[i]);
-        }
-        printf("\n");
-#endif
-    }
-    return ret;
-}
-#endif
-
-#if 0
-int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
-{
-    int ret = EXIT_OK;
-    if(!serial->waitForReadyRead(3000)) { // 等待最多 n 毫秒
-        qWarning() << "sisCmdRx waits for serial port data timeout:" << serial->errorString();
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    } else {
-        //QByteArray rbuffer = serial->read(rlength);
-        QByteArray rbuffer = serial->readAll();//read all可減少retry
-        QByteArray extractedData = {0};
-
-#ifdef _CHAOBAN_DRX
-        qDebug() << "Data received by sisCmdRx:" << rbuffer.toHex();
-        //qInfo() << "解析後的資料：";
-        //for (int i = 0; i < rbuffer.size(); i++) {
-        //    qInfo() << QString::number(rbuffer.at(i), 16);
-        //}
-#endif
-        if (rdata != nullptr) {
-            memcpy(rdata, rbuffer.constData(), rbuffer.size());
-        }
-#ifdef _CHAOBAN_DRX
-        printf("sisCmdRx rdata: ");
-        for (int i = 0; i < rlength; i++) {
-            printf("%x ", rdata[i]);
-        }
-        printf("\n");
-#endif
-    }
-    return ret;
-}
-#endif
-
-#if 0
-int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
-{
-    int ret = EXIT_OK;
-    //const QByteArray rbuffer = serial->readAll();
-
-    //if(!serial->waitForReadyRead(-1)) { //block until new data arrives
-	if(!serial->waitForReadyRead(1000)) { // 1000ms
-        qDebug() << "error: " << serial->errorString();
-        ret = CT_EXIT_CHIP_COMMUNICATION_ERROR;
-    }
-    else {
-        qDebug() << "New data available: " << serial->bytesAvailable();
-        QByteArray rbuffer = serial->readAll();
-
-        rdata = (unsigned char *)rbuffer.data();
-        rlength = rbuffer.size();
-
-#ifdef _CHAOBAN_DRX
-        qDebug() << "sisCmdRx:" << rbuffer.toHex();
-        printf("rdata:");
-        for (int i=0; i < rlength; i++) {
-            printf("%x ",rdata[i]);
-        }
-        printf("\n");
-#endif
-    }
-    return ret;
-}
-#endif
 
 /*
  * Change Mode
@@ -503,29 +348,22 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
         return ret;
     }
 
-
 #ifdef _CHAOBAN_DRX //chaoban test 2023.4.7
-    printf("tmpbuf:");
-    for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
-        printf("%02X ", tmpbuf[i]);
-    }
-    printf("\n");
+	if (GLOBAL_DEBUG_VERBOSE >= 2) {
+		printf("tmpbuf:");
+		for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
+			printf("%02X ", tmpbuf[i]);
+		}
+		printf("\n");
+	}
 #endif
 
-#if 1 //chaoban test 2023.4.7
     if (BIT_RX_READ + 3 < sizeof(tmpbuf)) {
         *bootflag = (tmpbuf[BIT_RX_READ] << 24) |
                     (tmpbuf[BIT_RX_READ + 1] << 16) |
                     (tmpbuf[BIT_RX_READ + 2] << 8) |
                     (tmpbuf[BIT_RX_READ + 3]);
     }
-#else
-    *bootflag = (tmpbuf[BIT_RX_READ] << 24) | 
-                (tmpbuf[BIT_RX_READ + 1] << 16) | 
-                (tmpbuf[BIT_RX_READ + 2] << 8) | 
-                (tmpbuf[BIT_RX_READ + 3]);
-#endif
-
     return ret;
 }
 
@@ -618,8 +456,6 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 
 	printf("\n");
 #endif
 
-
-#if 1 //2023.4.7   chaoban test
     printf("Get some parameters from device.\n");
     if (BIT_RX_READ + 2 < sizeof(tmpbuf)) *chip_id = tmpbuf[BIT_RX_READ + 2];
     //if (BIT_RX_READ + 4 < sizeof(tmpbuf)) *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
@@ -628,14 +464,7 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 
     if (BIT_RX_READ + 13 < sizeof(tmpbuf)) *chip_type = tmpbuf[BIT_RX_READ + 13];
     if (BIT_RX_READ + 15 < sizeof(tmpbuf)) *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
     printf("Get some parameters success.\n");
-#else
-    *chip_id = tmpbuf[BIT_RX_READ + 2];
-    //*tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
-    //*tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
-    *task_id = (tmpbuf[BIT_RX_READ + 10] << 8) | (tmpbuf[BIT_RX_READ + 11]);
-    *chip_type = tmpbuf[BIT_RX_READ + 13];
-    *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
-#endif
+
     return ret;
 }
 
@@ -759,7 +588,6 @@ bool sisWriteDataCmd(QSerialPort* serial, const quint8 *val, unsigned int count)
     return true;
 }
 
-//static bool sisFlashRom()
 bool sisFlashRom(QSerialPort* serial)
 {
     //printf("SiSFlashRom()\n");
@@ -796,7 +624,6 @@ bool sisFlashRom(QSerialPort* serial)
     return true;
 }
 
-//static bool sisClearBootflag()
 bool sisClearBootflag(QSerialPort* serial)
 {
     /* sisUpdateCmd
@@ -1039,7 +866,6 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
             return ret;
 	    }
     }
-
     /* (6) Update rodata
      *     ADDRESS: 0x1d000, Length=0x2000
      */
@@ -1049,27 +875,14 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
         printf("SiS update firmware fail at Rodata and Boot Flag.\n");
         return ret;
     }
-
+#if 0
     /* (7) Burn Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
      */
-#if 0
     printf("Burn Boot Flag ...\n");
     ret = sisUpdateBlock(serial, fn, 0x0001e000, 0x00001000);
     if (ret == false) {
         printf("SiS update firmware fail at Boot Flag.\n");
-        return ret;
-    }
-#endif
-
-    /*
-     * FOR TEST AND VERIFY
-     */
-#if 0
-    printf("FOR TEST AND VERIFY ...\n");
-    ret = sisUpdateBlock(serial, fn, 0x00000000, 0x0001F000);
-    if (ret == false) {
-        printf("Chaoban TEST AND VERIFY in burningCode().\n");
         return ret;
     }
 #endif
@@ -1137,7 +950,7 @@ int sisUpdateFlow(QSerialPort* serial,
 
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
-    quint32 tp_size = 0x00000000;
+    //quint32 tp_size = 0x00000000;
     quint32 tp_vendor_id = 0x00000000;
     quint32 bin_tp_vendor_id = 0x00000000;
     quint16 task_id = 0x0000;
@@ -1190,7 +1003,7 @@ int sisUpdateFlow(QSerialPort* serial,
      * Get FW Information
      */
     printf("Get Firmware Information.\n");
-#if 0
+#ifdef _GETFWINFO
 #ifdef _CHAOBAN_RETRY
     count = 0;
     do{
@@ -1217,8 +1030,6 @@ int sisUpdateFlow(QSerialPort* serial,
 #endif
 #endif
 
-#if 1
-    //TODO: 確認這些ADDRESS5正確否
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
     printf("  sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
@@ -1240,7 +1051,7 @@ int sisUpdateFlow(QSerialPort* serial,
     //fw version Major and small version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
     printf("  sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
-#endif
+
     /*
      * Check FW Info
      */
@@ -1265,7 +1076,7 @@ int sisUpdateFlow(QSerialPort* serial,
 
       //chaoban test marked
       //msleep(2000);
-#if 0
+#ifdef _GETBOOTFLAG
     /*
      * Get BootFlag
      */
@@ -1323,7 +1134,7 @@ int sisUpdateFlow(QSerialPort* serial,
      * Get Bootloader ID and Bootloader CRC
      * sisGetBootloaderId_Crc
      */
-#if 0
+#ifdef _GETBTIDCRC
     printf("Get Bootloader ID and Bootloader CRC.\n");
     bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (bRet == false) {
@@ -1337,7 +1148,7 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Check Bootloader ID and Bootloader CRC
      */
-#if 0
+#if 1
     printf("Check Bootloader ID and Bootloader CRC.\n");
 
     //bootloader id
@@ -1424,17 +1235,20 @@ int verifyRxData(int length, uint8_t *buffer)
     quint16 ackStatus = 0;
 
 #ifdef _CHAOBAN_DVERRX
-    printf("verifyRxData buffer: ");
-    for (int i = 0; i < length; i++) {
-        printf("%x ", buffer[i]);
-    }
-    printf("\n");
+	if (GLOBAL_DEBUG_VERBOSE >= 3) {
+		printf("verifyRxData buffer: ");
+		for (int i = 0; i < length; i++) {
+			printf("%x ", buffer[i]);
+		}
+		printf("\n");
+	}
 #endif
 
     ackStatus = (buffer[BUF_ACK_MSB] << 8) | buffer[BUF_ACK_LSB];
 
 #ifdef _CHAOBAN_DVERRX
-    printf("verifyRxData ackStatus:%x\n", ackStatus);
+	if (GLOBAL_DEBUG_VERBOSE >= 3)
+		printf("verifyRxData ackStatus:%x\n", ackStatus);
 #endif
 
     if (ackStatus == 0xbeef)

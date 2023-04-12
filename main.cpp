@@ -16,7 +16,6 @@
 #include "version.h"
 #include "ExitStatus.h"
 #include "sis_command.h"
-//#include "delay.h"
 //#pragma comment(lib, "Advapi32.lib")
 
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
@@ -42,6 +41,8 @@ quint8 *sis_fw_data; //unsigned char * sis_fw_data;
 extern QByteArray FirmwareString;
 /* 建立FW資訊用 */
 firmwareMap binaryMap;
+/* Dump data用 */
+int GLOBAL_DEBUG_VERBOSE = 0;
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
     GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
     QString filename = "";
     QString ComPortName = "";
-    QSerialPort serial; /* 開啟Serial Port用 */
+    QSerialPort serial;
     bool bAutoDetect = false;
     bool bUpdateBootloader = false;
     bool bUpdateBootloader_auto = false;
@@ -73,11 +74,8 @@ int main(int argc, char *argv[])
     QByteArray EnableIIC =      QByteArray::fromRawData("\x12\x08\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray InitGR =         QByteArray::fromRawData("\x12\x01\x80\x05\x00\x09\x00\x01\x00\x00", 10);
     QByteArray EnableGRUart =   QByteArray::fromRawData("\x12\x06\x80\x05\x00\x09\x00\x01\x00\x00", 10);
-
-    QByteArray ChangeMode =     QByteArray::fromRawData("\x12\x04\x80\x05\x00\x09\x0d\x85\x51\x09", 10);
-    QByteArray GetFWInformation = QByteArray::fromRawData("\x12\x04\x80\x09\x00\x09\x79\x86\x00\x40\x00\xa0\x34\x00", 14);
-
-
+    //QByteArray ChangeMode =     QByteArray::fromRawData("\x12\x04\x80\x05\x00\x09\x0d\x85\x51\x09", 10);
+    //QByteArray GetFWInformation = QByteArray::fromRawData("\x12\x04\x80\x09\x00\x09\x79\x86\x00\x40\x00\xa0\x34\x00", 14);
 
     /*
      * 處理輸入的參數
@@ -86,7 +84,10 @@ int main(int argc, char *argv[])
     exitCode = process_args(argc, argv, &param);
     if(exitCode != EXIT_OK)
         return EXIT_BADARGU;
-	
+
+    if(param.V) {
+        GLOBAL_DEBUG_VERBOSE = param.V;
+    }
     if(param.v) {
         printVersion();
         return EXIT_OK;
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
      * 4. 進入更新程序
      * ==============================
      */
-#if 1 //NOT IMPLEMENT
+#if 1 //Some argument still has NOT IMPLEMENT
 	if(bUpdateParameter || bReserveRODATA || bDump || bWaitTime) {
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
 		printf("Attention: -p, -r, -d, and -w are not implement yet.\n");
@@ -200,7 +201,9 @@ int main(int argc, char *argv[])
         return EXIT_BADARGU;
     }
 #endif
+
 lb_GetFile:
+
 	/* 選定韌體檔案 */
     if(param.infile[0] != '\0') {
         //printf("Open %s file\n", param.infile);
@@ -226,16 +229,15 @@ lb_GetFile:
         printf("Please type a com[0-16] port, or type '-a' to auto detect the serial port.\n");
         return EXIT_BADARGU;
     }
-	// 為了7501初期暫時的處置
-    // 提示必須同時更新Bootloader
+    // 為了7501初期暫時的處置: 提示必須同時更新Bootloader
 #if 1
     if (bUpdateBootloader == false){
 		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
         printf("Attention: currently 7501 must update the Bootloader at the same time. Please type '-b'.\n");
         printf("Or Bootloader will NOT UPDATE if also hasn't type '-ba'.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        if (bNc == false) getUserInput();
-        //return EXIT_BADARGU;
+        if (bNc == false)
+            getUserInput();
     }
 #endif
     /*
@@ -260,7 +262,6 @@ lb_GetFile:
 
 lb_Openfile:
 
-#if 1
 	/* 開啟韌體檔案*/
 	exitCode = openBinary(filename);
     if (exitCode == EXIT_OK) {
@@ -269,31 +270,7 @@ lb_Openfile:
         qDebug() << "Load firmware binary file failed:" << filename;
         return exitCode;
     }   
-#else	
-    long file_size;
 
-    FILE* fp = fopen(filename.toStdString().c_str(), "rb");
-    if (fp == NULL) {
-        printf("Failed to open the file: %s.\n", filename.toStdString().c_str());
-        return EXIT_BADARGU;
-    }
-
-    printf("Open the file: %s successfully.\n", filename.toStdString().c_str());
-
-    fseek(fp, 0, SEEK_END);
-    file_size = ftell(fp);
-    rewind(fp);
-
-    if ((sis_fw_data = (quint8*)malloc(sizeof(quint8) * file_size)) == NULL) {
-        printf("Failed to allocate memory.\n");
-        return EXIT_ERR;
-    }
-    if (fread(sis_fw_data, sizeof(char), (size_t)file_size, fp) != (size_t)file_size) {
-        printf("Failed to read file.\n");
-        return EXIT_ERR;
-    }
-    fclose(fp);
-#endif
 	/* 抓出韌體內的資訊*/
 	exitCode = getFirmwareInfo(sis_fw_data);
     if (exitCode == EXIT_OK) {
@@ -347,13 +324,22 @@ lb_Openfile:
     }
     printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
 	
-    /* 等待使用者確認y/Y後再更新 */
+    /* 等待使用者確認(y/Y)後再更新 */
     printf("\nThe process of updating the firmware will start.");
 	printf("\n");
     if (bNc == false) getUserInput();
 
     /*
-     * Here we can disable GR Uart Debug function
+     * 1. SISPEN_BRIDGE_DEBUG_DIS
+     * 2. SISPEN_BRIDGE_I2C_DIS
+     * 3. SISPEN_BRIDGE_HW_RESET
+     *    Delay 400ms
+     * 4. SISPEN_BRIDGE_I2C_EN
+     * 5. SISPEN_BRIDGE_INIT
+     * 6. I2C_W_R
+     * 7. SISPEN_BRIDGE_I2C_DIS_EN
+     * 8. SISPEN_BRIDGE_HW_RESET
+     * 9. SISPEN_BRIDGE_DEBUG_EN
      */
     printf("Disable GR Uart debug feature ... ");
     exitCode = GRDebugFunc(serial, DisableGRUart, 100, 2);//Set Timeout=10, count=50
@@ -390,7 +376,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Initial Hardware ... ");
-    exitCode = GRDebugFunc(serial, InitGR, 100, 10);
+    exitCode = GRDebugFunc(serial, InitGR, 100, 20);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -450,7 +436,6 @@ lb_Openfile:
         return GR_ERROR;
     }else
         printf("Success.\n");
-
 
     if (serial.isOpen()) {
         serial.close();
@@ -622,12 +607,10 @@ int testSerialPort(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
-#if 1
 int openBinary(QString path)
 {
     char file_data;
     QFile file(path);
-	/* TODO Debug: IF Local variable will make data incorrect, WHY */
     //QByteArray FirmwareString;
 	
     if (!file.open(QIODevice::ReadOnly)) {
@@ -675,8 +658,6 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
-	if (0)
-		return EXIT_ERR;
     return EXIT_OK;
 }
 
@@ -706,12 +687,8 @@ int verifyFirmwareInfo(quint8 *sis_fw_data)
     sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
     printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, true);
 
-    if (0)
-		return EXIT_ERR;
-
     return EXIT_OK;
 }
-#endif
 
 void getUserInput() {
     char user_input;
@@ -770,19 +747,15 @@ int GRDebugFunc(QSerialPort& serial,
             readData = serial.readAll();
             //readData = serial.read(13);
 #ifdef _CHAOBAN_DGDB
-            qDebug() << "read data size=" << readData.size();
-            qDebug() << "read data =" << readData.toHex();
+			if (GLOBAL_DEBUG_VERBOSE >= 1) {
+				//qDebug() << "read data size=" << readData.size();
+				qDebug() << "read data =" << readData.toHex();
+			}
 #endif
             unsigned char *rdata = (unsigned char *)readData.data();
             if(rdata[0] == 0x0e)
             {
-
                 ackStatus = (rdata[BUF_ACK_MSB] << 8 | rdata[BUF_ACK_LSB]);
-#if 0
-                if ((ackStatus == 0xbeef) || (ackStatus == 0xdead)) {
-                    isDataValid = true;
-                }
-#else
 
                 if (ackStatus == 0xbeef) {
                     isDataValid = true;
@@ -790,9 +763,6 @@ int GRDebugFunc(QSerialPort& serial,
                 else if(ackStatus == 0xdead) {
                     retryCount++;
                 }
-#endif
-
-
             }
 /*
             if (readData.size() == 13 && readData.at(0) == 0x0e) {
@@ -811,7 +781,8 @@ int GRDebugFunc(QSerialPort& serial,
 
     if (isDataValid) {
 #ifdef _CHAOBAN_DGDB
-        printf("ackStatus=%x\n", ackStatus);
+		if (GLOBAL_DEBUG_VERBOSE >= 1)
+			printf("ackStatus=%x\n", ackStatus);
 #endif
         return ackStatus;
     } else {
