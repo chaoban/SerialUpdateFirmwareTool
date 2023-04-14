@@ -33,10 +33,15 @@ typedef int ram_size_t;
 
 #define BIT_RX_READ			   13				
 
-#define READ_SIZE              52
+//#define READ_SIZE              0x34	//52
+#define READ_SIZE              0x30	// FOR DEBUG
+
 
 //FW ADDRESS
 #define ADDR_FW_INFO            0xA0004000
+#define ADDR_BOOT_FLAG			0xA001EFF0
+#define ADDR_BOOTLOADER_ID		0xA0000230
+
 
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09

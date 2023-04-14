@@ -18,9 +18,9 @@
 #define _CHAOBAN_RETRY              1
 
 /* 開關一些流程 */
-//#define _GETFWINFO          1
-//#define _GETBOOTFLAG        1
-//#define _GETBTIDCRC         1
+#define _GETFWINFO          1
+#define _GETBOOTFLAG        1
+#define _GETBTIDCRC         1
 
 enum SIS_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,

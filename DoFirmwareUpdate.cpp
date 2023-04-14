@@ -81,7 +81,7 @@ int processMyData(QByteArray data) {
     //qDebug() << "Process Data: " << data.toHex();
     quint16 status = myData[6] << 8 | myData[5];
 #ifdef _CHAOBAN_DRX
-	if (GLOBAL_DEBUG_VERBOSE >= 2)
+//	if (GLOBAL_DEBUG_VERBOSE >= 2)
 		printf("Ack: %x\n", status);
 #endif
     if (status != 0xbeef)
@@ -98,9 +98,12 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 {
     int ret = EXIT_ERR;
 
+    QByteArray data;
+
     while (serial->waitForReadyRead(2000)) {
         // 讀取serial port接收到的資料
-        QByteArray data = serial->readAll();
+        //QByteArray data = serial->readAll();
+        data += serial->readAll();
         //QByteArray data = serial->read(rlength);//chaoban test 2023.4.7
 #if 0
         if (data.isEmpty()) {
@@ -115,7 +118,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
 #endif
 
 #ifdef _CHAOBAN_DRX
-		if (GLOBAL_DEBUG_VERBOSE >= 2)
+		//if (GLOBAL_DEBUG_VERBOSE >= 2)
 			qDebug() << "Origin data:" <<data.toHex();
 #endif
         // 將接收到的資料轉換為unsigned char型別，然後加入緩衝區
@@ -125,7 +128,7 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
         }
 
 #ifdef _CHAOBAN_DRX
-		if (GLOBAL_DEBUG_VERBOSE >= 2)
+        //if (GLOBAL_DEBUG_VERBOSE >= 2)
 			qDebug() << "buffer: " << buffer.toHex();
 #endif
         // 搜索特殊標識出現的位置
@@ -162,12 +165,12 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
                         break;
                 } else {
                     // 資料還不完整，等待下一次接收
-                    qDebug() << "Data is not complete, waiting for next reception.";
+                    qDebug() << "Data is not complete, waiting for next reception #1.";
                     break;
                 }
             } else {
                 // 資料還不完整，等待下一次接收
-                qDebug() << "Data is not complete, waiting for next reception.";
+                qDebug() << "Data is not complete, waiting for next reception. #2";
                 break;
             }
             // 繼續搜索特殊標識
@@ -320,8 +323,17 @@ enum SIS_POWER_MODE sis_get_fw_mode()
 int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
 {
     int ret = EXIT_OK;
-    uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID,0x00/*CRC*/,
-            CMD_SISREAD, 0xf0, 0xef, 0x01, 0xa0, 0x34, 0x00};
+    int rlength = READ_SIZE;
+    uint8_t R_SIZE_LSB = rlength & 0xff;
+    uint8_t R_SIZE_MSB = (rlength >> 8) & 0xff;
+    uint8_t sis_cmd_get_bootflag[CMD_SZ_READ] = {SIS_REPORTID, 0x00/*CRC*/,
+                                                 CMD_SISREAD,
+                                                 (ADDR_BOOT_FLAG & 0xff),
+                                                 ((ADDR_BOOT_FLAG >> 8) & 0xff),
+                                                 ((ADDR_BOOT_FLAG >> 16) & 0xff),
+                                                 ((ADDR_BOOT_FLAG >> 24) & 0xff),
+                                                 R_SIZE_LSB,
+                                                 R_SIZE_MSB};
         sis_cmd_get_bootflag[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootflag,
                                                                  sizeof(sis_cmd_get_bootflag) );
     // write
@@ -349,13 +361,13 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
     }
 
 #ifdef _CHAOBAN_DRX //chaoban test 2023.4.7
-	if (GLOBAL_DEBUG_VERBOSE >= 2) {
+//	if (GLOBAL_DEBUG_VERBOSE >= 2) {
 		printf("tmpbuf:");
 		for (unsigned int i = 0; i < sizeof(tmpbuf); i++) {
 			printf("%02X ", tmpbuf[i]);
 		}
 		printf("\n");
-	}
+//	}
 #endif
 
     if (BIT_RX_READ + 3 < sizeof(tmpbuf)) {
@@ -889,12 +901,14 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 
     /* Reset */
 #if 1
-    printf("Reset SiS Device ...\n");
+    printf("Reset SiS Device ...");
     ret = sisResetCmd(serial);
     if (ret == false) {
-        printf("SiS Reset device failed %d\n", ret);
+        printf("\nSiS Reset device failed %d\n", ret);
         return ret;
     }
+    else
+        printf("Success!\n");
 #else
     printf("Temporarily canceled Reset SIS Device.\n");
 #endif
@@ -904,9 +918,17 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
 bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, quint32 *bootloader_crc)
 {
     int ret = EXIT_OK;
-    //int i=0;
-    uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID,
-        0x00, CMD_SISREAD, 0x30, 0x02, 0x00, 0xa0, 0x34, 0x00};
+	int rlength = READ_SIZE;
+    uint8_t R_SIZE_LSB = rlength & 0xff;
+    uint8_t R_SIZE_MSB = (rlength >> 8) & 0xff;
+    uint8_t sis_cmd_get_bootloader_id_crc[CMD_SZ_READ] = {SIS_REPORTID, 0x00/*CRC*/, 
+														  CMD_SISREAD, 
+														  (ADDR_BOOTLOADER_ID & 0xff),
+														  ((ADDR_BOOTLOADER_ID >> 8) & 0xff),
+														  ((ADDR_BOOTLOADER_ID >> 16) & 0xff),
+														  ((ADDR_BOOTLOADER_ID >> 24) & 0xff),
+														  R_SIZE_LSB, 
+														  R_SIZE_MSB};
     sis_cmd_get_bootloader_id_crc[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootloader_id_crc, CMD_SZ_READ );
 
     ret = sisCmdTx(serial, sizeof(sis_cmd_get_bootloader_id_crc), sis_cmd_get_bootloader_id_crc);
@@ -932,8 +954,16 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
         return false;
     }
 
-    *bootloader_version = (tmpbuf[8] << 24) | (tmpbuf[9] << 16) | (tmpbuf[10] << 8) | (tmpbuf[11]);
-    *bootloader_crc = (tmpbuf[12] << 24) | (tmpbuf[13] << 16) | (tmpbuf[14] << 8) | (tmpbuf[15]);
+	if (BIT_RX_READ + 7 < sizeof(tmpbuf)) {
+        *bootloader_version = (tmpbuf[BIT_RX_READ] << 24) |
+                    (tmpbuf[BIT_RX_READ + 1] << 16) |
+                    (tmpbuf[BIT_RX_READ + 2] << 8) |
+                    (tmpbuf[BIT_RX_READ + 3]);
+		*bootloader_crc = (tmpbuf[BIT_RX_READ + 4] << 24) |
+                    (tmpbuf[BIT_RX_READ + 5] << 16) |
+                    (tmpbuf[BIT_RX_READ + 6] << 8) |
+                    (tmpbuf[BIT_RX_READ + 7]);								
+    }
     return true;
 }
 
@@ -1035,8 +1065,8 @@ int sisUpdateFlow(QSerialPort* serial,
     printf("  sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
 
     //tp vendor id
-    bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
-    printf("  sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
+    //bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
+    //printf("  sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
 
     //task id
     bin_task_id = (sis_fw_data[0x400a] << 8) | (sis_fw_data[0x400b]);
@@ -1056,7 +1086,7 @@ int sisUpdateFlow(QSerialPort* serial,
      * Check FW Info
      */
 	if((chip_id != bin_chip_id) ||
-        (tp_vendor_id != bin_tp_vendor_id) ||
+//        (tp_vendor_id != bin_tp_vendor_id) ||
         (task_id != bin_task_id) ||
         (chip_type != bin_chip_type)) 
 	{
@@ -1182,6 +1212,10 @@ int sisUpdateFlow(QSerialPort* serial,
 			}
         }
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+    }
+    else
+    {
+        printf("  Bootloader ID and CRC are consistent.\n");
     }
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
