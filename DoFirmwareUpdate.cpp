@@ -468,14 +468,14 @@ int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 
 	printf("\n");
 #endif
 
-    printf("Get some parameters from device.\n");
+    //printf("Get some parameters from device.\n");
     if (BIT_RX_READ + 2 < sizeof(tmpbuf)) *chip_id = tmpbuf[BIT_RX_READ + 2];
     //if (BIT_RX_READ + 4 < sizeof(tmpbuf)) *tp_size = (tmpbuf[BIT_RX_READ + 3] << 16) | (tmpbuf[BIT_RX_READ + 4] << 8) | (tmpbuf[BIT_RX_READ + 5]);
     //if (BIT_RX_READ + 9 < sizeof(tmpbuf)) *tp_vendor_id = (tmpbuf[BIT_RX_READ + 6] << 24) | (tmpbuf[BIT_RX_READ + 7] << 16) | (tmpbuf[BIT_RX_READ + 8] << 8) | (tmpbuf[BIT_RX_READ + 9]);
     if (BIT_RX_READ + 11 < sizeof(tmpbuf)) *task_id = (tmpbuf[BIT_RX_READ + 10] << 8) | (tmpbuf[BIT_RX_READ + 11]);
     if (BIT_RX_READ + 13 < sizeof(tmpbuf)) *chip_type = tmpbuf[BIT_RX_READ + 13];
     if (BIT_RX_READ + 15 < sizeof(tmpbuf)) *fw_version = (tmpbuf[BIT_RX_READ + 14] << 8) | (tmpbuf[BIT_RX_READ + 15]);
-    printf("Get some parameters success.\n");
+    //printf("Get some parameters success.\n");
 
     return ret;
 }
@@ -981,8 +981,6 @@ int sisUpdateFlow(QSerialPort* serial,
     quint8 chip_id = 0x00;
     quint8 bin_chip_id = 0x00;
     //quint32 tp_size = 0x00000000;
-    quint32 tp_vendor_id = 0x00000000;
-    quint32 bin_tp_vendor_id = 0x00000000;
     quint16 task_id = 0x0000;
     quint16 bin_task_id = 0x0000;
     quint8 chip_type = 0x00;
@@ -1003,7 +1001,7 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Switch FW Mode
      */
-    printf("Switch Firmware Mode.\n");
+    printf("Switch Firmware Mode ...\n");
 #ifdef _CHAOBAN_RETRY
     do{
         count ++;
@@ -1032,7 +1030,7 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get FW Information
      */
-    printf("Get Firmware Information.\n");
+    printf("Get Firmware Information ...\n");
 #ifdef _GETFWINFO
 #ifdef _CHAOBAN_RETRY
     count = 0;
@@ -1062,25 +1060,21 @@ int sisUpdateFlow(QSerialPort* serial,
 
     //chip id
     bin_chip_id = sis_fw_data[0x4002];
-    printf("  sis chip id = %02x, bin = %02x\n", chip_id, bin_chip_id);
-
-    //tp vendor id
-    //bin_tp_vendor_id = (sis_fw_data[0x4006] << 24) | (sis_fw_data[0x4007] << 16) | (sis_fw_data[0x4008] << 8) | (sis_fw_data[0x4009]);
-    //printf("  sis tp vendor id = %08x, bin = %08x\n", tp_vendor_id, bin_tp_vendor_id);
+    printf("  sis chip id: %02x;      bin file: %02x\n", chip_id, bin_chip_id);
 
     //task id
     bin_task_id = (sis_fw_data[0x400a] << 8) | (sis_fw_data[0x400b]);
-    printf("  sis task id = %04x, bin = %04x\n", task_id, bin_task_id);
+    printf("  sis task id: %04x;    bin file: %04x\n", task_id, bin_task_id);
 
     //0x400c reserved
 
     //chip type
     bin_chip_type = sis_fw_data[0x400d];
-    printf("  sis chip type = %02x, bin = %02x\n", chip_type, bin_chip_type);
+    printf("  sis chip type: %02x;    bin file: %02x\n", chip_type, bin_chip_type);
 
     //fw version Major and small version
     bin_fw_version = (sis_fw_data[0x400e] << 8) | (sis_fw_data[0x400f]);
-    printf("  sis fw version = %04x, bin = %04x\n", fw_version, bin_fw_version);
+    printf("  sis fw version: %04x; bin file: %04x\n", fw_version, bin_fw_version);
 
     /*
      * Check FW Info
@@ -1091,11 +1085,11 @@ int sisUpdateFlow(QSerialPort* serial,
         (chip_type != bin_chip_type)) 
 	{
 		if (bJump == true) {
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+			SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 			printf("Firmware info not match, but jump parameter validation. Update process go on.\n");
 			SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 		} else {
-			SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+			SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 			printf("Firmware info not match, stop update firmware process.\n");
 			SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 			return CT_EXIT_AP_FLOW_ERROR;
@@ -1110,7 +1104,7 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get BootFlag
      */
-    printf("Get BootFlag.\n");
+    printf("Get BootFlag ...\n");
 #ifdef _CHAOBAN_RETRY
     count = 0;
     do {
@@ -1136,7 +1130,7 @@ int sisUpdateFlow(QSerialPort* serial,
 #endif
 
     bin_bootflag = (sis_fw_data[0x1eff0] << 24) | (sis_fw_data[0x1eff1] << 16) | (sis_fw_data[0x1eff2] << 8) | (sis_fw_data[0x1eff3]);
-    printf("  sis bootflag = %08x, bin = %08x\n", bootflag, bin_bootflag);
+    printf("  sis bootflag: %08x; bin file: %08x\n", bootflag, bin_bootflag);
 
     /*
      * Check BootFlag
@@ -1151,7 +1145,7 @@ int sisUpdateFlow(QSerialPort* serial,
     }
 
     if (bootflag != SIS_BOOTFLAG_P810) {
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
         printf("Firmware of device is broken, force update.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         bForceUpdate = true;
@@ -1183,15 +1177,15 @@ int sisUpdateFlow(QSerialPort* serial,
 
     //bootloader id
     bin_bootloader_version = (sis_fw_data[0x230] << 24) | (sis_fw_data[0x231] << 16) | (sis_fw_data[0x232] << 8) | (sis_fw_data[0x233]);
-    printf("  sis bootloader id = %08x, bin = %08x.\n", bootloader_version, bin_bootloader_version);
+    printf("  sis bootloader id: %08x;  bin file: %08x.\n", bootloader_version, bin_bootloader_version);
 
     //bootloader crc
     bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
-    printf("  sis bootloader crc = %08x, bin = %08x.\n", bootloader_crc_version, bin_bootloader_crc_version);
+    printf("  sis bootloader crc: %08x; bin file: %08x.\n", bootloader_crc_version, bin_bootloader_crc_version);
 
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) 
 	{
-        SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 		printf("Differences have been found in Bootloader, ");
         if (bUpdateBootloader_auto == true)
         {
@@ -1219,7 +1213,7 @@ int sisUpdateFlow(QSerialPort* serial,
     }
 
     if ((bin_fw_version & 0xff00) == 0xab00) {
-        SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+        SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 		printf("bin_fw_version 0xff00 = 0xab00, force update it.\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         bForceUpdate = true;
@@ -1246,15 +1240,17 @@ int sisUpdateFlow(QSerialPort* serial,
 			//SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
             //printf("SiS Update Firmware failed\n");
 			//SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-            return CT_EXIT_AP_FLOW_ERROR;
+            return EXIT_ERR;
         }
         //firmware_id = bin_fw_version;
     }
     else if (bin_fw_version > 0xabff) {
 		printf("Unavilable Firmware version.\n");
+        return CT_EXIT_AP_FLOW_ERROR;
     }
     else {
-		printf("Current Firmware version is same or later than bin.\n");
+        printf("Current Firmware version is same or later than the bin file.\n");
+        return CT_EXIT_AP_FLOW_ERROR;
     }
 
     return CT_EXIT_PASS;

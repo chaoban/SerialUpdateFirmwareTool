@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
      */
 #if 1 //Some argument still has NOT IMPLEMENT
 	if(bUpdateParameter || bReserveRODATA || bDump || bWaitTime) {
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 		printf("Attention: -p, -r, -d, and -w are not implement yet.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 	}
@@ -229,10 +229,13 @@ lb_GetFile:
         printf("Please type a com[0-16] port, or type '-a' to auto detect the serial port.\n");
         return EXIT_BADARGU;
     }
-    // 為了7501初期暫時的處置: 提示必須同時更新Bootloader
-#if 1
+
+#if 0
+    /*
+     * 為了7501初期暫時的處置: 提示必須同時更新Bootloader
+     */
     if (bUpdateBootloader == false){
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
+		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
         printf("Attention: currently 7501 must update the Bootloader at the same time. Please type '-b'.\n");
         printf("Or Bootloader will NOT UPDATE if also hasn't type '-ba'.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -250,13 +253,17 @@ lb_GetFile:
         if (bUpdateBootloader == true) {
             printf("Update Bootloader.\n");
         }else {
-            printf("Do not Update Bootloader.\n");
+            printf("NO Update Bootloader.\n");
         }
     } else { // Auto update bootloader
-        bUpdateBootloader = false;
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN);
-        printf("Attention: -b and -ba are conflict, it will use -ba to update bootloader automatically.\n");
-		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+        if (bUpdateBootloader == true) {
+            bUpdateBootloader = false;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
+            printf("Attention: -b and -ba are conflict, it will update bootloader automatically.\n");
+            SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+        } else
+            printf("Update bootloader automatically.\n");
+
     }
     print_sep();
 
@@ -289,7 +296,7 @@ lb_Openfile:
 	/* 檢查韌體資訊 */
     exitCode = verifyFirmwareInfo(sis_fw_data);
     if (exitCode == EXIT_OK) {
-        qDebug() << "Verify firmware binary file successfully:" << filename;
+        //qDebug() << "Verify firmware binary file successfully:" << filename;
     }else {    
         qDebug() << "Verify firmware binary file failed:" << filename;
         return exitCode;
@@ -376,7 +383,7 @@ lb_Openfile:
         printf("Success.\n");
 
     printf("Initial Hardware ... ");
-    exitCode = GRDebugFunc(serial, InitGR, 100, 20);
+    exitCode = GRDebugFunc(serial, InitGR, 100, 50);
     if (exitCode != 0xbeef) {
         printf("Failed.\n");
         return GR_ERROR;
@@ -398,13 +405,19 @@ lb_Openfile:
     if (exitCode == EXIT_SUCCESS) {
         SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
         printf("Update Firmware Success.\n");
+    } else if (exitCode == CT_EXIT_AP_FLOW_ERROR) {
+        SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_RED);
+        printf("Program that hasn't continued firmware updates.\n");
+        /* Recovery the color of text in console */
+        //SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
     } else {
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
         printf("Update Firmware Failed\n");
         /* Recovery the color of text in console */
-        SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+        //SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+
         //chaoban test
-        return EXIT_FAIL;
+        //return EXIT_FAIL;
     }
     /* Recovery the color of text in console */
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -625,7 +638,7 @@ int openBinary(QString path)
     }
     file.close();
 
-    printf("Firmware data being read are %i bytes.\n", FirmwareString.length());
+    printf("Firmware file size: %i bytes.\n", FirmwareString.length());
     //sis_fw_data = (unsigned char *)FirmwareString.data();
     sis_fw_data = (quint8 *)FirmwareString.data();
     return EXIT_OK;

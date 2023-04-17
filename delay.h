@@ -16,5 +16,4 @@ void msleep(unsigned int msec)
     QTimer::singleShot(msec, &loop, SLOT(quit()));
     loop.exec();
 }
-
 #endif // DELAY_H

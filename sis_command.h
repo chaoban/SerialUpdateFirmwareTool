@@ -36,12 +36,10 @@ typedef int ram_size_t;
 //#define READ_SIZE              0x34	//52
 #define READ_SIZE              0x30	// FOR DEBUG
 
-
 //FW ADDRESS
 #define ADDR_FW_INFO            0xA0004000
 #define ADDR_BOOT_FLAG			0xA001EFF0
 #define ADDR_BOOTLOADER_ID		0xA0000230
-
 
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09
@@ -79,5 +77,4 @@ typedef int ram_size_t;
 #define GR_OP_WR                0x04
 #define GR_OP_DISABLE_DEBUG     0x05
 #define GR_OP_ENABLE_DEBUG      0x06
-
 #endif // SIS_COMMAND_H

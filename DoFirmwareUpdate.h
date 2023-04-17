@@ -1,6 +1,5 @@
 ﻿#ifndef DOFIRMWAREUPDATE_H
 #define DOFIRMWAREUPDATE_H
-
 #include <QTextStream>
 #include <QSerialPort>
 #include "ExitStatus.h"
@@ -98,6 +97,5 @@ int sisCmdRx(QSerialPort* serial, int , unsigned char *);
 int verifyRxData(int length, uint8_t *buffer);
 int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bUpdateBootloader_auto, bool bForceUpdate, bool bJump);
 int sisGetBootflag(QSerialPort* serial, quint32 *);
-//int sisGetFwInfo(QSerialPort* serial, quint8 *, quint32 *, quint32 *, quint16 *, quint8 *, quint16 *);
 int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version);
 #endif // DOFIRMWAREUPDATE_H

@@ -23,6 +23,7 @@ inline void progresBar(int totalProgress , int currentProgress, int progressBarW
 #define TIMEOUT_SERIAL          3000
 #define SIS_GENERAL_TIMEOUT     1000
 
+#define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
 
 struct DateTime {
     quint16 year;

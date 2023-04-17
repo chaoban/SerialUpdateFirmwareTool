@@ -19,5 +19,4 @@ enum CTExitCode
     CT_EXIT_AP_FLOW_ERROR = 3,              // CT check flow/somethings error. User may set some things error.
     CT_EXIT_NO_COMPORT = 4,
 };
-
 #endif
