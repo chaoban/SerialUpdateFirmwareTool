@@ -16,7 +16,7 @@
 #include "version.h"
 #include "ExitStatus.h"
 #include "sis_command.h"
-//#pragma comment(lib, "Advapi32.lib")
+#pragma comment(lib, "Advapi32.lib")//chaoban test 2023.4.19
 
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
@@ -94,11 +94,10 @@ int main(int argc, char *argv[])
     }
     // 帶有Help參數時，顯示參數說明，然後不再繼續執行
     if(param.h) {
-        print_help();
+        print_help(argv[0]);
         return EXIT_OK;
     }
     if(param.l) {
-        //TODO
         printf("Display Firmware Information of the Binary firmware file:\n");
         bList = true;
         goto lb_GetFile;
@@ -113,6 +112,7 @@ int main(int argc, char *argv[])
     SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
     printf("Arguments setting by user:\n");
     if(param.a) {
+        // TODO
         bAutoDetect = true;
         printf(" * Automatically detect the serial port for SiS Device.\n");
     }
@@ -422,7 +422,7 @@ lb_Openfile:
     /* Recovery the color of text in console */
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
-    free(sis_fw_data);
+    //free(sis_fw_data);//chaoban test 2023.4.19
 
     print_sep();
 	
@@ -620,6 +620,33 @@ int testSerialPort(QString *ComPortName)
     return CT_EXIT_FAIL;
 }
 
+#if 1
+int openBinary(QString fileName)
+{
+    char file_data;
+    QString exePath = QCoreApplication::applicationDirPath(); // 取得可執行檔的路徑
+    QString filePath = exePath + "/" + fileName; // 構建要打開的文件的路徑
+    QFile file(filePath);
+    //QByteArray FirmwareString;
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Could not open bin file for reading.";
+        return EXIT_ERR;
+    }
+    while(!file.atEnd())
+    {
+      // return value from 'file.read' should always be sizeof(char).
+      file.read(&file_data, sizeof(char));
+      FirmwareString.append(file_data);
+    }
+    file.close();
+
+    printf("Firmware file size: %i bytes.\n", FirmwareString.length());
+    //sis_fw_data = (unsigned char *)FirmwareString.data();
+    sis_fw_data = (quint8 *)FirmwareString.data();
+    return EXIT_OK;
+}
+#else
 int openBinary(QString path)
 {
     char file_data;
@@ -643,7 +670,7 @@ int openBinary(QString path)
     sis_fw_data = (quint8 *)FirmwareString.data();
     return EXIT_OK;
 }
-
+#endif
 int getFirmwareInfo(quint8 *sis_fw_data)
 {
     // TODO: Refine later

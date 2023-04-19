@@ -71,7 +71,8 @@ void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int le
         return;
     }
 
-    quint8 data[length];
+    //quint8 data[length];
+    std::vector<quint8> data(length);//chaoban test 2023.4.19
 
     printf("%s: ", str);
     for (int i = 0; i < length; i++) {

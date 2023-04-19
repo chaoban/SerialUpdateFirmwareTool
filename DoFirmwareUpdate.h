@@ -7,7 +7,7 @@
 /* 輸出一些debug訊息用 */
 //#define _CHAOBAN_DTX               1
 //#define _CHAOBAN_DRX               1
-//#define _CHAOBAN_DGDB               1
+#define _CHAOBAN_DGDB               1
 //#define _CHAOBAN_DVERRX             1
 
 /* 顯示進度條 */

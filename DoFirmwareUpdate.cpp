@@ -41,7 +41,7 @@ int sisCmdTx(QSerialPort* serial, int wlength, unsigned char *wdata)
     writeData.resize(5);
     writeData[BIT_UART_ID] = GR_CMD_ID;
     writeData[BIT_OP_LSB] = GR_OP_WR;
-    writeData[BIT_OP_MSB] = GR_OP;
+    writeData[BIT_OP_MSB] =  static_cast<byte>(GR_OP);//chaoban test 2023/4/19
     writeData[BIT_SIZE_LSB] = (wlength & 0xff);
     writeData[BIT_SIZE_MSB] = ((wlength >> 8 ) & 0xff);
     writeData.append(appendData);

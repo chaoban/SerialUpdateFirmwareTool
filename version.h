@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define MAIN_VERSION 0
-#define SUB_VERSION 1
+#define SUB_VERSION 2
 #define LAST_VERSION 0
 
 #define BUILD_DATE __DATE__
@@ -13,7 +13,7 @@ void printVersion();
 
 void printVersion()
 {
-    printf("Update SiS Pen Firmware tool.(Uart interface) Version %d.%d.%d  ",
+    printf("SiS Update Pen Firmware tool.(Uart interface) Version %d.%d.%d  ",
            MAIN_VERSION,
            SUB_VERSION,
            LAST_VERSION);

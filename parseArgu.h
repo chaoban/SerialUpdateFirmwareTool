@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-void print_help();
+void print_help(const char* programName);
 
 typedef struct {
     const char *arg;  // 參數
@@ -75,9 +75,9 @@ args_t param = {
     .w = 		false
 };
 
-void print_help() {
-    printf("Update SiS Pen firmware by uart comX port from object<file>.\n");
-    printf("Usage: sUpdateFw <file> <option(s)> | <com[0-16]>\n");
+void print_help(const char* programName) {
+    printf("Update the SiS Pen firmware by uart comX port from object<file>.\n");
+    printf("Usage: %s <file> <option(s)> <com[0-16]>\n", programName);
     printf(" At least one of the following switches must be given.\n");
     printf(" Options:\n");
     for(unsigned int j = 0; j < sizeof(args)/sizeof(arg_t); j++) {
@@ -87,7 +87,7 @@ void print_help() {
 
 int process_args(int argc, char *argv[], args_t* param) {
     if (argc == 1) {
-        print_help();
+        print_help(argv[0]);
         return -1;
     }
     for(int i = 1; i < argc; i++) {
