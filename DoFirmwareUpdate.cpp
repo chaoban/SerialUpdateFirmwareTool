@@ -177,7 +177,6 @@ int sisCmdRx(QSerialPort* serial, int rlength, unsigned char *rdata)
             index = buffer.indexOf(reinterpret_cast<const char*>(start), 0);
         }
     }
-
     return ret;
 }
 
@@ -336,7 +335,6 @@ int sisGetBootflag(QSerialPort* serial, quint32 *bootflag)
                                                  R_SIZE_MSB};
         sis_cmd_get_bootflag[BIT_CRC] = sis_Calculate_Output_Crc(sis_cmd_get_bootflag,
                                                                  sizeof(sis_cmd_get_bootflag) );
-    // write
     ret = sisCmdTx(serial, sizeof(sis_cmd_get_bootflag), sis_cmd_get_bootflag);
     if (ret != EXIT_OK) {
         printf("SiS SEND READ CMD Failed - (86), Error code: %d\n", ret);
@@ -996,8 +994,6 @@ int sisUpdateFlow(QSerialPort* serial,
     int ret = -1;
 	bool bRet = true;
     int count = 0;
-
-#if 1
     /*
      * Switch FW Mode
      */
@@ -1025,13 +1021,11 @@ int sisUpdateFlow(QSerialPort* serial,
         return CT_EXIT_FAIL;
     }
 #endif
-#endif
     //msleep(2000);//chaoban test 2023.4.7
     /*
      * Get FW Information
      */
     printf("Get Firmware Information ...\n");
-#ifdef _GETFWINFO
 #ifdef _CHAOBAN_RETRY
     count = 0;
     do{
@@ -1055,7 +1049,6 @@ int sisUpdateFlow(QSerialPort* serial,
         printf("SiS get fw info failed. Error code: %d\n", ret);
 		return ret;
     }
-#endif
 #endif
 
     //chip id
@@ -1100,7 +1093,6 @@ int sisUpdateFlow(QSerialPort* serial,
 
       //chaoban test marked
       //msleep(2000);
-#ifdef _GETBOOTFLAG
     /*
      * Get BootFlag
      */
@@ -1151,28 +1143,21 @@ int sisUpdateFlow(QSerialPort* serial,
         bForceUpdate = true;
     }
 
-    //msleep(2000);
     //msleep(1000); //chaoban test
-#endif
     /*
      * Get Bootloader ID and Bootloader CRC
      * sisGetBootloaderId_Crc
      */
-#ifdef _GETBTIDCRC
     printf("Get Bootloader ID and Bootloader CRC.\n");
     bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (bRet == false) {
         printf("SiS get bootloader ID or CRC failed.\n");
 		return CT_EXIT_CHIP_COMMUNICATION_ERROR;
     }
-#else
-    printf("Temporarily canceled Get Bootloader ID and Bootloader CRC.\n");
-#endif
 
     /*
      * Check Bootloader ID and Bootloader CRC
      */
-#if 1
     printf("Check Bootloader ID and Bootloader CRC.\n");
 
     //bootloader id
@@ -1218,9 +1203,6 @@ int sisUpdateFlow(QSerialPort* serial,
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         bForceUpdate = true;
     }
-#else
-    printf("Temporarily canceled Check Bootloader ID and Bootloader CRC.\n");
-#endif
 
     /*
      * Update Firmware
@@ -1301,5 +1283,4 @@ int verifyRxData(int length, uint8_t *buffer)
     }
 */
     return ret;
-
 }

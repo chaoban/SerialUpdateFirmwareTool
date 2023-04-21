@@ -53,8 +53,8 @@ typedef int ram_size_t;
 #define INT_OUT_REPORT          0x09
 
 #define SIS_BOOTFLAG_P810       0x50383130
-/* Special Update Flag : Update by SerialPort */
-#define SERIAL_FLAG             0x5350 //ASCII: S P
+/* Special Update Flag : Update by Uart */
+#define SERIAL_FLAG             0x5552 //ASCII: UR
 
 //GR UART CMD ID
 #define GR_CMD_ID               0x12

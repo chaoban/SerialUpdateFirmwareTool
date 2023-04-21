@@ -16,11 +16,6 @@
 /* 修改的機制 */
 #define _CHAOBAN_RETRY              1
 
-/* 開關一些流程 */
-#define _GETFWINFO          1
-#define _GETBOOTFLAG        1
-#define _GETBTIDCRC         1
-
 enum SIS_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
     POWER_MODE_FWCTRL = 0x50,

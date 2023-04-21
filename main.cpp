@@ -1,4 +1,8 @@
-﻿#include <QCoreApplication>
+﻿/**************************************
+ * SIS UART UPDATE PEN FIRMWARE TOOL
+ * Date: 2023.4.21
+ **************************************/
+#include <QCoreApplication>
 #include <QSettings>
 #include <QStringList>
 #include <QSerialPort>
@@ -16,7 +20,7 @@
 #include "version.h"
 #include "ExitStatus.h"
 #include "sis_command.h"
-#pragma comment(lib, "Advapi32.lib")//chaoban test 2023.4.19
+#pragma comment(lib, "Advapi32.lib")//For MSVC2019.If compiled using mingw, this line is not necessary.
 
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();

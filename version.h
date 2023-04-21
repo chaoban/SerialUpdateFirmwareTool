@@ -4,7 +4,7 @@
 
 #define MAIN_VERSION 0
 #define SUB_VERSION 2
-#define LAST_VERSION 0
+#define LAST_VERSION 1
 
 #define BUILD_DATE __DATE__
 #define BUILD_TIME __TIME__
