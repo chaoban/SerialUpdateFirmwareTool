@@ -814,7 +814,7 @@ bool sisUpdateBlock(QSerialPort* serial, quint8 *data, unsigned int addr, unsign
     return true;
 }
 
-bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
+bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
 {
     bool ret = true;
 
@@ -868,7 +868,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader)
      *     ADDRESS: 0x0, Length=0x4000
      *     (Notes: if need update bootloader)
      */
-    if (bUpdateBootloader) {
+    if (updateCodeParam.bt) {
         printf("Update Boot loader ...\n");
         ret = sisUpdateBlock(serial, fn, 0x00000000, 0x00004000);
 	    if (ret == false) {
@@ -965,12 +965,9 @@ bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *bootloader_version, qu
     return true;
 }
 
-int sisUpdateFlow(QSerialPort* serial, 
+int sisUpdateFlow(QSerialPort* serial,
 				  quint8 *sis_fw_data, 
-                  bool bUpdateBootloader,
-                  bool bUpdateBootloader_auto,
-				  bool bForceUpdate, 
-				  bool bJump)
+				  updateParams updateCodeParam)				  
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 獲取標準輸出設備的句柄
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -1077,7 +1074,7 @@ int sisUpdateFlow(QSerialPort* serial,
         (task_id != bin_task_id) ||
         (chip_type != bin_chip_type)) 
 	{
-		if (bJump == true) {
+		if (updateCodeParam.jump == true) {
 			SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 			printf("Firmware info not match, but jump parameter validation. Update process go on.\n");
 			SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -1140,7 +1137,7 @@ int sisUpdateFlow(QSerialPort* serial,
 		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
         printf("Firmware of device is broken, force update.\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        bForceUpdate = true;
+        updateCodeParam.force = true;
     }
 
     //msleep(1000); //chaoban test
@@ -1168,13 +1165,32 @@ int sisUpdateFlow(QSerialPort* serial,
     bin_bootloader_crc_version = (sis_fw_data[0x234] << 24) | (sis_fw_data[0x235] << 16) | (sis_fw_data[0x236] << 8) | (sis_fw_data[0x237]);
     printf("  sis bootloader crc: %08x; bin file: %08x.\n", bootloader_crc_version, bin_bootloader_crc_version);
 
+/******************************************************
+ * 有-b參數時: 更新Main code+Bootloader
+ * 無-b參數時
+ *      比對BootloaderID和BootloaderCRC
+ *          相同時:
+ *              只更新Main code
+ *          不同時:
+ *              無-ba參數:停止更新
+ *              有-ba參數:更新Main code + Bootloader
+ *
+ * 有-p參數時:
+ *      比對Main Code CRC
+ *          相同時:
+ *              只更新0xa0004000-0xa0004FFF
+ *          不同時:
+ *              ?????
+ *
+*******************************************************/
+
     if ((bootloader_version != bin_bootloader_version) && (bootloader_crc_version != bin_bootloader_crc_version)) 
 	{
         SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 		printf("Differences have been found in Bootloader, ");
-        if (bUpdateBootloader_auto == true)
+        if (updateCodeParam.bt_a == true)
         {
-            bUpdateBootloader = true;
+            updateCodeParam.bt = true;
             printf("and will update Bootloader.\n");
 			//TODO
 			// if(bUpdateParameter == true) {
@@ -1182,7 +1198,7 @@ int sisUpdateFlow(QSerialPort* serial,
             //    bUpdateParameter = false;
             //}
         } else {
-			if (bUpdateBootloader == true) {
+			if (updateCodeParam.bt == true) {
 				printf("and we also set to update Bootloader.\n");
 			} else {
 				printf("but No update Bootloader.\n");
@@ -1201,7 +1217,7 @@ int sisUpdateFlow(QSerialPort* serial,
         SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
 		printf("bin_fw_version 0xff00 = 0xab00, force update it.\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        bForceUpdate = true;
+        updateCodeParam.force = true;
     }
 
     /*
@@ -1210,13 +1226,13 @@ int sisUpdateFlow(QSerialPort* serial,
      */
 
     if (((bin_fw_version > fw_version) && (bin_fw_version < 0xab00))
-            || (bForceUpdate == true)) 
+            || (updateCodeParam.force == true)) 
 	{ 
         SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
         printf("START FIRMWARE UPDATE, PLEASE DO NOT INTERRUPT IT.\n");
         SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 
-        bRet = burningCode(serial, sis_fw_data, bUpdateBootloader);
+        bRet = burningCode(serial, sis_fw_data, updateCodeParam);
 
         if (bRet == false) {
 			//SetConsoleTextAttribute(hConsole, FOREGROUND_RED);
@@ -1237,6 +1253,7 @@ int sisUpdateFlow(QSerialPort* serial,
 
     return CT_EXIT_PASS;
 }
+
 
 /*
  * Return 0 = OK, others faled

@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     QString filename = "";
     QString ComPortName = "";
     QSerialPort serial;
+    updateParams updateCodeParam = {false};
     bool bAutoDetect = false;
     bool bUpdateBootloader = false;
     bool bUpdateBootloader_auto = false;
@@ -271,6 +272,12 @@ lb_GetFile:
     }
     print_sep();
 
+    updateCodeParam.bt = bUpdateBootloader;
+    updateCodeParam.bt_a = bUpdateBootloader_auto;
+    updateCodeParam.param = bUpdateParameter;
+    updateCodeParam.force = bForceUpdate;
+    updateCodeParam.jump = bJump;
+
 lb_Openfile:
 
 	/* 開啟韌體檔案*/
@@ -398,12 +405,10 @@ lb_Openfile:
 
     /* UPDATE Firmware */
     qDebug() << "Start Update Firmware by"  <<  serial.portName() << "port.";
+
     exitCode = sisUpdateFlow(&serial,
                              sis_fw_data,
-                             bUpdateBootloader,
-                             bUpdateBootloader_auto,
-                             bForceUpdate,
-                             bJump);
+                             updateCodeParam);
 
     printf("\nExit code : %d.\n", exitCode);
     if (exitCode == EXIT_SUCCESS) {
@@ -708,7 +713,7 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 int verifyFirmwareInfo(quint8 *sis_fw_data)
 {
     quint32 timeStamp = getTimestamp();
-    printf("Current time: %08x.\n", timeStamp);
+    printf("Current time: %08x\n", timeStamp);
 
     // Add time stamp in 0x1e000, 4bytes
     DateTime dateTime = getCurrentDateTime();
@@ -729,7 +734,7 @@ int verifyFirmwareInfo(quint8 *sis_fw_data)
     // *p++ = SERIAL_FLAG & 0xff;
     sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
     sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
-    printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, true);
+    printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, false);
 
     return EXIT_OK;
 }

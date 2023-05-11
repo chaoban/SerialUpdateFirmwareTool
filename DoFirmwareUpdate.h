@@ -24,6 +24,15 @@ enum SIS_POWER_MODE {
 };
 enum SIS_POWER_MODE sis_get_fw_mode();
 
+typedef struct {
+	bool main;
+    bool bt;
+    bool bt_a;
+    bool param;
+    bool force;
+    bool jump;
+} updateParams;
+
 struct firmwareMap {
     struct {
         unsigned int sourceTag; 		//0x0200, 6 bytes, 7501A is "virgo", 0x76 69 72 67 6f 00
@@ -85,12 +94,12 @@ bool sisGetFwId(QSerialPort* serial, quint16 *);
 bool sisUpdateCmd(QSerialPort* serial, unsigned int, int);
 bool sisWriteDataCmd(QSerialPort* serial, const quint8 *, unsigned int);
 bool sisUpdateBlock(QSerialPort* serial, quint8 *, unsigned int, unsigned int);
-bool burningCode(QSerialPort* serial, quint8 *fn, bool bUpdateBootloader);
+bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam);
 bool sisGetBootloaderId_Crc(QSerialPort* serial, quint32 *, quint32 *);
 int sisCmdTx(QSerialPort* serial, int , unsigned char *);
 int sisCmdRx(QSerialPort* serial, int , unsigned char *);
 int verifyRxData(int length, uint8_t *buffer);
-int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, bool bUpdateBootloader, bool bUpdateBootloader_auto, bool bForceUpdate, bool bJump);
+int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, updateParams updateCodeParam);
 int sisGetBootflag(QSerialPort* serial, quint32 *);
 int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version);
 #endif // DOFIRMWAREUPDATE_H

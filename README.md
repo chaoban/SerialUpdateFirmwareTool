@@ -1,22 +1,32 @@
 # 開發環境
 
-### QT版本:
+### QT版本
 
-#### QT Creator 5.0.2
+#### 	QT Creator 5.0.2
 
-##### Based on QT 5.15.2 (MSVC 2019, 64 bit)
-
-
-
-### 程式語言:
-
-#### C/C++
+#### 	Based on QT 5.15.2 (MSVC 2019, 64 bit)
 
 
 
-##### 注意：編譯及釋出版本，請更改版本版號。
+### 程式語言
 
-##### 位於 version.h
+#### 	C/C++
+
+
+
+### Build & Run
+
+#### 	Desktop (x86-windows-msvc2019-pe-32Bit)
+
+
+
+---
+
+# 版號
+
+#### 編譯及釋出版本，請更改版本版號
+
+#### 位於 version.h
 
 ```C
 #define MAIN_VERSION 0
