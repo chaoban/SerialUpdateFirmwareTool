@@ -22,6 +22,7 @@ typedef struct {
     int  dbgMode;
     bool force;
 	bool h;
+    bool jcp;
 	bool jump;
 	bool l;
 	bool p;
@@ -45,7 +46,7 @@ arg_t args[] = {
     {"-nc",      "No need to confirm whether to update. Default is need to confirm."},
     {"-d",       "Dump firmware information of the device."},
 	{"-l",		 "Display the information of the firmware binary file."},
-    {"-p",       "Only update parameter."},
+    {"-p",       "Only update parameters."},
     {"-r",       "Reserve RO data."},
     {"-s",       "Scan and list all available serial ports in the host."},
     {"-v",		 "Display version and build information."},
@@ -65,6 +66,7 @@ args_t param = {
     .dbgMode = 0,
     .force = 	false,
     .h = 		false,
+    .jcp =      false,
     .jump = 	false,
 	.l =		false,
     .p = 		false,
@@ -94,60 +96,63 @@ int process_args(int argc, char *argv[], args_t* param) {
         if (argv[i][0] == '-') { // 開頭為'-'的參數
             int found = 0; // 紀錄是否找到參數
             for(unsigned int j = 0; j < sizeof(args)/sizeof(arg_t); j++) {
-                if(strcmp(argv[i], args[j].arg) == 0) { // To check arguments support or not
+                if (strcmp(argv[i], args[j].arg) == 0) { // To check arguments support or not
                     found = 1;
-                    if(strcmp(argv[i], "-a") == 0) {
+                    if (strcmp(argv[i], "-a") == 0) {
                         param->a = true;
                     }
-                    else if(strcmp(argv[i], "-b") == 0) {
+                    else if (strcmp(argv[i], "-b") == 0) {
 						param->b = true;
                     }
-					else if(strcmp(argv[i], "-ba") == 0) {
+					else if (strcmp(argv[i], "-ba") == 0) {
 						param->ba = true;
                     }
-                    else if(strcmp(argv[i], "-nc") == 0) {
+                    else if (strcmp(argv[i], "-nc") == 0) {
                         param->nc = true;
                     }
-					else if(strcmp(argv[i], "-d") == 0) {
+					else if (strcmp(argv[i], "-d") == 0) {
 						param->d = true;
                     }
-					else if(strcmp(argv[i], "--force") == 0) {
+					else if (strcmp(argv[i], "--force") == 0) {
 						param->force = true;
                     }
-                    else if(strcmp(argv[i], "-h") == 0) {
+                    else if (strcmp(argv[i], "-h") == 0) {
                         param->h = true;
                     }
-					else if(strcmp(argv[i], "--jump") == 0) {
+                    else if (strcmp(argv[i], "--jcp") == 0) {
+                        param->jcp = true;
+                    }
+					else if (strcmp(argv[i], "--jump") == 0) {
 						param->jump = true;
                     }
-					else if(strcmp(argv[i], "-l") == 0) {
+					else if (strcmp(argv[i], "-l") == 0) {
 						param->l = true;
                     }
-					else if(strcmp(argv[i], "-p") == 0) {
+					else if (strcmp(argv[i], "-p") == 0) {
 						param->p = true;
                     }
-					else if(strcmp(argv[i], "-r") == 0) {
+					else if (strcmp(argv[i], "-r") == 0) {
 						param->r = true;
                     }
-					else if(strcmp(argv[i], "-s") == 0) {
+					else if (strcmp(argv[i], "-s") == 0) {
 						param->s = true;
                     }
-					else if(strcmp(argv[i], "-v") == 0) {
+					else if (strcmp(argv[i], "-v") == 0) {
 						param->v = true;
                     }
-					else if(strcmp(argv[i], "-w") == 0) {
+					else if (strcmp(argv[i], "-w") == 0) {
 						param->w = true;
                     }
                     break;
                 }
-                if(strncmp(argv[i], "--dbg", 5) == 0) {
+                if (strncmp(argv[i], "--dbg", 5) == 0) {
                     found = 1;
                     char* dbg_str = argv[i] + 5;
                     param->dbg = true;
-                    if(strcmp(dbg_str, "=1") == 0) {
+                    if (strcmp(dbg_str, "=1") == 0) {
                         param->dbgMode = 1;
                     }
-                    else if(strcmp(dbg_str, "=0") == 0) {
+                    else if (strcmp(dbg_str, "=0") == 0) {
                         param->dbgMode = 0;
                     }
                     else {
@@ -157,13 +162,13 @@ int process_args(int argc, char *argv[], args_t* param) {
                     }
                 }
             }
-            if(!found) {
+            if (!found) {
                 printf("Unrecognized command-line option [%s]\n", argv[i]);
                 printf("Please type -h to show list of classes of commands.\n");
                 return -1;
             }
         } // TODO: 需要優化，判斷COM後再抓後面數字即可
-        else if(strcmp(argv[i], "com1") == 0 || strcmp(argv[i], "com2") == 0 || strcmp(argv[i], "com3") == 0 ||
+        else if (strcmp(argv[i], "com1") == 0 || strcmp(argv[i], "com2") == 0 || strcmp(argv[i], "com3") == 0 ||
             strcmp(argv[i], "com4") == 0 || strcmp(argv[i], "com5") == 0 || strcmp(argv[i], "com6") == 0 ||
             strcmp(argv[i], "com7") == 0 || strcmp(argv[i], "com8") == 0 || strcmp(argv[i], "com9") == 0 ||
             strcmp(argv[i], "com10") == 0 || strcmp(argv[i], "com11") == 0 || strcmp(argv[i], "com12") == 0 ||
@@ -171,15 +176,15 @@ int process_args(int argc, char *argv[], args_t* param) {
             strcmp(argv[i], "com16") == 0)
         {
             strcpy(param->com, argv[i]);
-        } else if(strncmp(argv[i], "V", 1) == 0) {
+        } else if (strncmp(argv[i], "V", 1) == 0) {
             char* dbg_str = argv[i] + 1;
-            if(strcmp(dbg_str, "=1") == 0) {
+            if (strcmp(dbg_str, "=1") == 0) {
                 param->V = 1;
             }
-            else if(strcmp(dbg_str, "=2") == 0) {
+            else if (strcmp(dbg_str, "=2") == 0) {
                 param->V = 2;
             }
-            else if(strcmp(dbg_str, "=3") == 0) {
+            else if (strcmp(dbg_str, "=3") == 0) {
                 param->V = 3;
             }
             else {
@@ -190,7 +195,7 @@ int process_args(int argc, char *argv[], args_t* param) {
         } else
         {
             char *ext = strrchr(argv[i], '.');      // 取得argv中最後一個 '.' 的位置
-            if(ext && strcmp(ext, ".bin") == 0) {   // 如果ext不為NULL且與".bin"相同，則argv為副檔名為bin的名稱
+            if (ext && strcmp(ext, ".bin") == 0) {   // 如果ext不為NULL且與".bin"相同，則argv為副檔名為bin的名稱
                 strcpy(param->infile, argv[i]);
             }
             else {

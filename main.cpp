@@ -20,7 +20,7 @@
 #include "version.h"
 #include "ExitStatus.h"
 #include "sis_command.h"
-#pragma comment(lib, "Advapi32.lib")//For MSVC2019.If compiled using mingw, this line is not necessary.
+#pragma comment(lib, "Advapi32.lib")//For MSVC2019. If compiled using mingw, this line is not necessary.
 
 DWORD WINAPI RcvWaitProc(LPVOID lpParamter);
 const QStringList getComportRegKey();
@@ -28,7 +28,7 @@ int GRDebugFunc(QSerialPort& serial, const QByteArray& writeData, int timeout, i
 int testSerialPort(QString *ComPortName);
 int openBinary(QString path);
 int getFirmwareInfo(quint8 *sis_fw_data);
-int verifyFirmwareInfo(quint8 *sis_fw_data);
+int UpdateFirmwareInfo(quint8 *sis_fw_data);
 void getUserInput();
 extern int scanSerialport();
 extern int getTimestamp();
@@ -66,9 +66,10 @@ int main(int argc, char *argv[])
     bool bNc = false;
     bool bDump = false;
     bool bForceUpdate = false;
+    bool bJcp = false;
     bool bJump = false;
 	bool bList = false;
-    bool bUpdateParameter = false;
+    bool bOnlyParam = false;
     bool bReserveRODATA = false;
     bool bWaitTime = false;
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
@@ -87,28 +88,28 @@ int main(int argc, char *argv[])
      * 沒有接參數的時候，顯示(Help)指令說明
      */
     exitCode = process_args(argc, argv, &param);
-    if(exitCode != EXIT_OK)
+    if (exitCode != EXIT_OK)
         return EXIT_BADARGU;
 
-    if(param.V) {
+    if (param.V) {
         GLOBAL_DEBUG_VERBOSE = param.V;
     }
-    if(param.v) {
+    if (param.v) {
         printVersion();
         return EXIT_OK;
     }
     // 帶有Help參數時，顯示參數說明，然後不再繼續執行
-    if(param.h) {
+    if (param.h) {
         print_help(argv[0]);
         return EXIT_OK;
     }
-    if(param.l) {
+    if (param.l) {
         printf("Display Firmware Information of the Binary firmware file:\n");
         bList = true;
         goto lb_GetFile;
     }
     // 帶有掃描serial port時，掃描及列出後，不再繼續執行
-    if(param.s) {
+    if (param.s) {
         printf("Scan and list all available serial ports:\n");
         scanSerialport();
         return EXIT_OK;
@@ -116,64 +117,67 @@ int main(int argc, char *argv[])
 
     SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
     printf("Arguments setting by user:\n");
-    if(param.a) {
+    if (param.a) {
         // TODO
         bAutoDetect = true;
-        printf(" * Automatically detect the serial port for SiS Device.\n");
+        printf(" * Automatically detect the serial port for SiS Device\n");
     }
-    if(param.dbg) {
-        if(param.dbgMode == 1) {
+    if (param.dbg) {
+        if (param.dbgMode == 1) {
             // TODO
-            printf("Enable GR Uart Debug Function.\n");
+            printf("Enable GR Uart Debug Function\n");
         }
         if (param.dbgMode == 0) {
             // TODO
-            printf("Disable GR Uart Debug Function.\n");
+            printf("Disable GR Uart Debug Function\n");
         }
         return EXIT_OK;
     }
     /*
      * 以下重要的參數
      */
-    if(param.b) {
+    if (param.b) {
         bUpdateBootloader = true;
-        printf(" * Update Bootloader.\n");
+        printf(" * Update Bootloader\n");
     }
-    if(param.ba) {
+    if (param.ba) {
         bUpdateBootloader_auto = true;
-        printf(" * Automatically Update Bootloader.\n");
+        printf(" * Automatically Update Bootloader\n");
     }
-    if(param.nc) {
+    if (param.nc) {
         bNc = true;
-        printf(" * No need to confirm update.\n");
+        printf(" * No need to confirm update\n");
     }
-    if(param.d) {
+    if (param.d) {
         bDump = true;
         //TODO
-        printf(" * Dump function HAS NOT SUPPORT YET.\n");
+        printf(" * Dump function HAS NOT SUPPORT YET\n");
     }
-    if(param.force) {
+    if (param.force) {
         bForceUpdate = true;
-        printf(" * Force update firmware.\n");
+        printf(" * Force update firmware\n");
     }
-    if(param.jump) {
+    if (param.jcp) {
+        bJcp = true;
+        printf(" * Skip compare the PKGID\n");
+    }
+    if (param.jump) {
         bJump = true;
-        printf(" * Skip parameter validation.\n");
+        printf(" * Skip parameter validation\n");
     }
-    if(param.p) {
-        bUpdateParameter = true;
-        //TODO
-        printf(" * Only update parameter HAS NOT SUPPORT YET.\n");
+    if (param.p) {
+        bOnlyParam = true;
+        printf(" * Only update parameters\n");
     }
-    if(param.r) {
+    if (param.r) {
         bReserveRODATA = true;
         //TODO
-        printf(" * Reserve RO data HAS NOT SUPPORT YET.\n");
+        printf(" * Reserve RO data HAS NOT SUPPORT YET\n");
     }
-    if(param.w) {
+    if (param.w) {
         bWaitTime = true;
         //TODO
-        printf(" * Wait time HAS NOT SUPPORT YET.\n");
+        printf(" * Wait time HAS NOT SUPPORT YET\n");
     }
 
     SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
@@ -181,104 +185,84 @@ int main(int argc, char *argv[])
     /*
      * ==============================
      * 1. 參數檢查
-     * 2. 讀取韌體檔案
-     * 3. 開啟Serial port
+	 * 2. 開啟Serial port
+     * 3. 讀取韌體檔案
      * 4. 進入更新程序
      * ==============================
-     */
-#if 1 //Some argument still has NOT IMPLEMENT
-	if(bUpdateParameter || bReserveRODATA || bDump || bWaitTime) {
-		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
-		printf("Attention: -p, -r, -d, and -w are not implement yet.\n");
-		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-	}
-#else
-	if(bUpdateParameter && bUpdateBootloader) {
-        printf("Attention: -p and -b is conflict.\n");
+     */ 
+	 
+    if (bOnlyParam && bUpdateBootloader) {
+        printf("Attention: -p and -b is conflict\n");
         return EXIT_BADARGU;
     }
-    if(bUpdateParameter && bReserveRODATA) {
-        printf("Attention: -p and -r is conflict.\n");
+    //Some argument still has NOT IMPLEMENT
+    if (bReserveRODATA || bDump || bWaitTime) {
+		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
+        printf("Attention: -r, -d, and -w are not implement yet\n");
+		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+	}
+#if 0
+    if (bOnlyParam && bReserveRODATA) {
+        printf("Attention: -p and -r is conflict\n");
         return EXIT_BADARGU;
     }	
-    if(bForceUpdate && bJump) {
-        printf("Attention: --force and --jump is conflict.\n");
+    if (bForceUpdate && bJump) {
+        printf("Attention: --force and --jump is conflict\n");
         return EXIT_BADARGU;
     }
 #endif
+	/*
+	 * 決定要不要更新Boot Loader
+     * 同時下"-b"和"-ba"時，以"-b"為優先
+     */
+    if (bUpdateBootloader == true) {
+        if (bUpdateBootloader_auto == false)
+            printf("Force Update Bootloader\n");
+        else {
+            bUpdateBootloader_auto = false;
+            SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
+            printf("Attention: -b and -ba are conflict and will force update bootloader\n");
+            SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
+        }
+    }
+    else {
+        if (bUpdateBootloader_auto == true)
+            printf("Update Bootloader automatically\n");
+    }
+    
+    updateCodeParam.bt = bUpdateBootloader;
+    updateCodeParam.bt_a = bUpdateBootloader_auto;
+    updateCodeParam.main = true;
+    updateCodeParam.onlyparam = bOnlyParam;
+    updateCodeParam.force = bForceUpdate;
+    updateCodeParam.jcp = bJcp;
+    updateCodeParam.jump = bJump;
+	print_sep();
+	
+	/* 選定Com Port */
+	if (param.com[0] != '\0') {
+        //printf("Open the Serial %s port\n", param.com);
+        ComPortName = QString::fromStdString(param.com);
+        printf("Assign the %s port to update\n", ComPortName.toStdString().c_str());
+        bAutoDetect = false;
+    } else if (bAutoDetect == true) {
+        printf("Automatically detect the serial port that connect to SiS Device\n");
+    } else {
+        printf("Please type a com[0-16] port, or type '-a' to auto detect the serial port\n");
+        return EXIT_BADARGU;
+    }
 
 lb_GetFile:
-
 	/* 選定韌體檔案 */
-    if(param.infile[0] != '\0') {
+    if (param.infile[0] != '\0') {
         //printf("Open %s file\n", param.infile);
         filename = QString::fromStdString(param.infile);
         //filename = QString::fromLocal8Bit(param.infile);
     }
     else {
-        printf("No binary file found.\n");
+        printf("No binary file found\n");
         return EXIT_BADARGU;
     }
-
-    if(bList == true) goto lb_Openfile;
-
-	/* 選定Com Port */
-	if(param.com[0] != '\0') {
-        //printf("Open the Serial %s port\n", param.com);
-        ComPortName = QString::fromStdString(param.com);
-        printf("Assign the %s port to update.\n", ComPortName.toStdString().c_str());
-        bAutoDetect = false;
-    } else if(bAutoDetect == true) {
-        printf("Automatically detect the serial port that connect to SiS Device.\n");
-    } else {
-        printf("Please type a com[0-16] port, or type '-a' to auto detect the serial port.\n");
-        return EXIT_BADARGU;
-    }
-
-#if 0
-    /*
-     * 為了7501初期暫時的處置: 提示必須同時更新Bootloader
-     */
-    if (bUpdateBootloader == false){
-		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
-        printf("Attention: currently 7501 must update the Bootloader at the same time. Please type '-b'.\n");
-        printf("Or Bootloader will NOT UPDATE if also hasn't type '-ba'.\n");
-		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        if (bNc == false)
-            getUserInput();
-    }
-#endif
-    /*
-	 * 決定要不要更新Boot Loader
-     * 同時下"更新Bootloader"
-     *     和"自動更新Bootloader"時，
-     *     以"自動"為優先
-     */
-    if(bUpdateBootloader_auto == false) {
-        if (bUpdateBootloader == true) {
-            printf("Update Bootloader.\n");
-        }else {
-            printf("NO Update Bootloader.\n");
-        }
-    } else { // Auto update bootloader
-        if (bUpdateBootloader == true) {
-            bUpdateBootloader = false;
-            SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
-            printf("Attention: -b and -ba are conflict, it will update bootloader automatically.\n");
-            SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
-        } else
-            printf("Update bootloader automatically.\n");
-
-    }
-    print_sep();
-
-    updateCodeParam.bt = bUpdateBootloader;
-    updateCodeParam.bt_a = bUpdateBootloader_auto;
-    updateCodeParam.param = bUpdateParameter;
-    updateCodeParam.force = bForceUpdate;
-    updateCodeParam.jump = bJump;
-
-lb_Openfile:
 
 	/* 開啟韌體檔案*/
 	exitCode = openBinary(filename);
@@ -289,8 +273,9 @@ lb_Openfile:
         return exitCode;
     }   
 
-	/* 抓出韌體內的資訊*/
+	/* 抓出韌體Binary fle內的資訊*/
 	exitCode = getFirmwareInfo(sis_fw_data);
+	
     if (exitCode == EXIT_OK) {
         //qDebug() << "Dump firmware binary information successfully.";
     }else {    
@@ -300,12 +285,13 @@ lb_Openfile:
 
     print_sep();
 
-    if(bList == true)
+    if (bList == true)
         return EXIT_OK;
 
     //TODO
-	/* 檢查韌體資訊 */
-    exitCode = verifyFirmwareInfo(sis_fw_data);
+	/* 更新韌體資訊 */
+    exitCode = UpdateFirmwareInfo(sis_fw_data);
+	
     if (exitCode == EXIT_OK) {
         //qDebug() << "Verify firmware binary file successfully:" << filename;
     }else {    
@@ -340,7 +326,7 @@ lb_Openfile:
         standardOutput << QObject::tr("Failed to open serial %1 port, error: %2.").arg(ComPortName, serial.errorString()) << Qt::endl;
         return CT_EXIT_NO_COMPORT;
     }
-    printf("Open serial %s port successfully.\n", ComPortName.toStdString().c_str());
+    printf("Open serial %s port successfully\n", ComPortName.toStdString().c_str());
 	
     /* 等待使用者確認(y/Y)後再更新 */
     printf("\nThe process of updating the firmware will start.");
@@ -362,44 +348,44 @@ lb_Openfile:
     printf("Disable GR Uart debug feature ... ");
     exitCode = GRDebugFunc(serial, DisableGRUart, 100, 2);//Set Timeout=10, count=50
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     printf("Disable II2C ... ");
     exitCode = GRDebugFunc(serial, DisableIIC, 100, 2);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     printf("Reset Hardware ... ");
     exitCode = GRDebugFunc(serial, ResetHW, 100, 2);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 	
     msleep(400);
 	
     printf("Enable II2C ... ");
     exitCode = GRDebugFunc(serial, EnableIIC, 100, 2);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     printf("Initial Hardware ... ");
     exitCode = GRDebugFunc(serial, InitGR, 100, 50);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     print_sep();
 
@@ -410,13 +396,13 @@ lb_Openfile:
                              sis_fw_data,
                              updateCodeParam);
 
-    printf("\nExit code : %d.\n", exitCode);
+    printf("\nExit code : %d\n", exitCode);
     if (exitCode == EXIT_SUCCESS) {
         SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
-        printf("Update Firmware Success.\n");
+        printf("Update Firmware Success\n");
     } else if (exitCode == CT_EXIT_AP_FLOW_ERROR) {
         SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN | FOREGROUND_RED);
-        printf("Program that hasn't continued firmware updates.\n");
+        printf("Program that hasn't continued firmware updates\n");
         /* Recovery the color of text in console */
         //SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
     } else {
@@ -438,26 +424,26 @@ lb_Openfile:
     printf("Disable II2C ... ");
     exitCode = GRDebugFunc(serial, DisableIIC, 10, 1);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     printf("Reset Hardware ... ");
     exitCode = GRDebugFunc(serial, ResetHW,10, 1);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     printf("Enable GR Uart debug feature ... ");
     exitCode = GRDebugFunc(serial, EnableGRUart, 10, 1);
     if (exitCode != 0xbeef) {
-        printf("Failed.\n");
+        printf("Failed\n");
         return GR_ERROR;
     }else
-        printf("Success.\n");
+        printf("Success\n");
 
     if (serial.isOpen()) {
         serial.close();
@@ -473,7 +459,7 @@ const QStringList getComportRegKey()
     QString keyPath = "HARDWARE\\DEVICEMAP\\SERIALCOMM";
     HKEY comsKey;
     LPCWSTR winKeyPath = (LPCWSTR) keyPath.constData();
-    if( RegOpenKey( HKEY_LOCAL_MACHINE, winKeyPath, &comsKey ) != ERROR_SUCCESS ) {
+    if ( RegOpenKey( HKEY_LOCAL_MACHINE, winKeyPath, &comsKey ) != ERROR_SUCCESS ) {
         RegCloseKey( comsKey );
         return comports;
     }
@@ -486,7 +472,7 @@ const QStringList getComportRegKey()
         LPCWSTR winKey = (LPCWSTR) newKey.constData();
         char *szData = new char[101];
         DWORD dwType, dwLen=100;
-        if( RegQueryValueEx( comsKey, winKey,
+        if ( RegQueryValueEx( comsKey, winKey,
                              NULL, &dwType, (unsigned char *)szData, &dwLen) == ERROR_SUCCESS ) {
             comports.append( QString::fromUtf16( (ushort*)szData ) );
             printf("%s. ",QString::fromUtf16( (ushort*)szData ).toStdString().c_str() );
@@ -513,7 +499,7 @@ int testSerialPort(QString *ComPortName)
 
     int portAmount = comports.size();
     if ( portAmount == 0 ) {
-        printf("Error : cannot find any existing com port, please attach UART/USB adapter.\n");
+        printf("Error : cannot find any existing com port, please attach UART/USB adapter\n");
         return CT_EXIT_NO_COMPORT;
     }
 
@@ -538,7 +524,7 @@ int testSerialPort(QString *ComPortName)
         bool commState;
         commState = GetCommState(hComm, &tmpDCB);
         if ( hComm == INVALID_HANDLE_VALUE || commState == FALSE) {
-            printf("Open %s failed\t--> Warning : this com port was occupied or no longer available.\n", curPortName.toStdString().c_str());
+            printf("Open %s failed\t--> Warning : this com port was occupied or no longer available\n", curPortName.toStdString().c_str());
             occupiedPortCount ++;
             CloseHandle( hComm );
             continue;
@@ -565,7 +551,7 @@ int testSerialPort(QString *ComPortName)
         HANDLE hThread;
         hThread = CreateThread(NULL, 0, RcvWaitProc, hComm, 0, NULL);
         if ( WaitForSingleObject(hThread, TIMEOUT_SERIAL) == WAIT_TIMEOUT ) {
-            printf("Warning : receiver timeout.\n");
+            printf("Warning : receiver timeout\n");
             timeOutPortCount++;
 //            CloseHandle( hComm );
             continue;
@@ -596,13 +582,13 @@ int testSerialPort(QString *ComPortName)
             }
         }
         if (mismatchKey == FALSE) {
-            printf("verifying key matches for SiS Device.\n");
+            printf("verifying key matches for SiS Device\n");
             CloseHandle( hComm );
             return CT_EXIT_PASS;
             break;
         }
         else {
-            printf("verifying key mismatched.\n");
+            printf("verifying key mismatched\n");
 #if 0
             for( int i=0; i<inByteCount; i++ )
             {
@@ -618,13 +604,13 @@ int testSerialPort(QString *ComPortName)
 
     printf("FAIL\n");
     if ( occupiedPortCount>0 ) {
-        printf("(Open com port fail, some com ports were occupied).\n");
+        printf("(Open com port fail, some com ports were occupied)\n");
     }
     if (mismatchKey == TRUE) {
-        printf("(Verifying key mismatch).\n");
+        printf("(Verifying key mismatch)\n");
     }
     if (timeOutPortCount>0) {
-        printf("(UART RX no response).\n");
+        printf("(UART RX no response)\n");
     }
     return CT_EXIT_FAIL;
 }
@@ -650,7 +636,7 @@ int openBinary(QString fileName)
     }
     file.close();
 
-    printf("Firmware file size: %i bytes.\n", FirmwareString.length());
+    printf("Firmware file size: %i bytes\n", FirmwareString.length());
     //sis_fw_data = (unsigned char *)FirmwareString.data();
     sis_fw_data = (quint8 *)FirmwareString.data();
     return EXIT_OK;
@@ -674,7 +660,7 @@ int openBinary(QString path)
     }
     file.close();
 
-    printf("Firmware file size: %i bytes.\n", FirmwareString.length());
+    printf("Firmware file size: %i bytes\n", FirmwareString.length());
     //sis_fw_data = (unsigned char *)FirmwareString.data();
     sis_fw_data = (quint8 *)FirmwareString.data();
     return EXIT_OK;
@@ -684,7 +670,7 @@ int getFirmwareInfo(quint8 *sis_fw_data)
 {
     // TODO: Refine later
     //binaryMap.bootLoader.sourceTag = sis_fw_data[0x200];
-    //printf("sourceCode Tag: %x.\n", binaryMap.bootLoader.sourceTag);
+    //printf("sourceCode Tag: %x\n", binaryMap.bootLoader.sourceTag);
     printf("Dump firmware binary information:\n");
 
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -710,7 +696,7 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     return EXIT_OK;
 }
 
-int verifyFirmwareInfo(quint8 *sis_fw_data)
+int UpdateFirmwareInfo(quint8 *sis_fw_data)
 {
     quint32 timeStamp = getTimestamp();
     printf("Current time: %08x\n", timeStamp);
@@ -718,24 +704,30 @@ int verifyFirmwareInfo(quint8 *sis_fw_data)
     // Add time stamp in 0x1e000, 4bytes
     DateTime dateTime = getCurrentDateTime();
 
-    // 將月、日、時、分分別存入 sis_fw_data 陣列的 0x1e000 開始的 4 bytes
+	//Special Update Flag : Update by serial port tool
+    // quint8 *p = (quint8 *)(sis_fw_data + 0x4000);
+    // *p++ = UPDATE_MARK >> 8;
+    // *p++ = UPDATE_MARK & 0xff;
+    sis_fw_data[0x4000] = UPDATE_MARK >> 8;
+    sis_fw_data[0x4001] = UPDATE_MARK & 0xff;
+    printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, false);
+	
+	// 將年、月、日、時、分分別存入 sis_fw_data 陣列的 0x40a0 開始的 5 bytes
+	sis_fw_data[0x40a0] = static_cast<quint8>(dateTime.year);
+	sis_fw_data[0x40a1] = dateTime.month;
+    sis_fw_data[0x40a2] = dateTime.day;
+    sis_fw_data[0x40a3] = dateTime.hour;
+    sis_fw_data[0x40a4] = dateTime.minute;
+	
+	// 將月、日、時、分分別存入 sis_fw_data 陣列的 0x1e000 開始的 4 bytes
     //sis_fw_data[0x1e000] = static_cast<quint8>(dateTime.year >> 8); // 年
     //sis_fw_data[0x1e001] = static_cast<quint8>(dateTime.year);      // 年
     sis_fw_data[0x1e000] = dateTime.month;
     sis_fw_data[0x1e001] = dateTime.day;
     sis_fw_data[0x1e002] = dateTime.hour;
     sis_fw_data[0x1e003] = dateTime.minute;
-
     printAddrData(sis_fw_data, "Write new update time to FW", 0x1e000, 4, false);
-
-    //Special Update Flag : Update by serial port tool
-    // quint8 *p = (quint8 *)(sis_fw_data + 0x4000);
-    // *p++ = SERIAL_FLAG >> 8;
-    // *p++ = SERIAL_FLAG & 0xff;
-    sis_fw_data[0x4000] = SERIAL_FLAG >> 8;
-    sis_fw_data[0x4001] = SERIAL_FLAG & 0xff;
-    printAddrData(sis_fw_data, "Write new special update flag to FW", 0x4000, 2, false);
-
+	
     return EXIT_OK;
 }
 
@@ -763,7 +755,7 @@ int GRDebugFunc(QSerialPort& serial,
                 int count)
 {
     if (writeData.isEmpty()) {
-        printf("No GR Uart switch command.\n");
+        printf("No GR Uart switch command\n");
         return EXIT_BADARGU;
     }
 
@@ -779,13 +771,13 @@ int GRDebugFunc(QSerialPort& serial,
         const qint64 bytesWritten = serial.write(writeData);
 
         if (bytesWritten == -1) {
-            printf("error: Can not send command to serial port.\n");
+            printf("error: Can not send command to serial port\n");
             return CT_EXIT_CHIP_COMMUNICATION_ERROR;
         } else if (bytesWritten != writeData.size()) {
-            printf("error: Send command to serial port but interrupt.\n");
+            printf("error: Send command to serial port but interrupt\n");
             return CT_EXIT_FAIL;
         } else if (!serial.waitForBytesWritten(1000)) { // 等待最多n毫秒(ms)，以確保資料已經成功地寫入串列埠
-            printf("error: Serial port timeout.\n");
+            printf("error: Serial port timeout\n");
             return CT_EXIT_CHIP_COMMUNICATION_ERROR;
         }
 
@@ -802,14 +794,14 @@ int GRDebugFunc(QSerialPort& serial,
 			}
 #endif
             unsigned char *rdata = (unsigned char *)readData.data();
-            if(rdata[0] == 0x0e)
+            if (rdata[0] == 0x0e)
             {
                 ackStatus = (rdata[BUF_ACK_MSB] << 8 | rdata[BUF_ACK_LSB]);
 
                 if (ackStatus == 0xbeef) {
                     isDataValid = true;
                 }
-                else if(ackStatus == 0xdead) {
+                else if (ackStatus == 0xdead) {
                     retryCount++;
                 }
             }
@@ -835,7 +827,7 @@ int GRDebugFunc(QSerialPort& serial,
 #endif
         return ackStatus;
     } else {
-        printf("GRDebugFunc timeout or get incorrect RX data.\n");
+        printf("GRDebugFunc timeout or get incorrect RX data\n");
         return EXIT_FAIL;
     }
     return EXIT_OK;

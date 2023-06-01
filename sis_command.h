@@ -33,13 +33,15 @@ typedef int ram_size_t;
 
 #define BIT_RX_READ			   13				
 
-//#define READ_SIZE              0x34	//52
-#define READ_SIZE              0x30	// FOR DEBUG
+//#define R_MAX_SIZE              0x34	/* TODO: 讀取長度為52bytes時，QT Serial有未知問題，讀不到資料 */
+#define R_MAX_SIZE              0x30 
 
 //FW ADDRESS
 #define ADDR_FW_INFO            0xA0004000
+#define ADDR_FWUPDATE_INFO      0xA00040A0
 #define ADDR_BOOT_FLAG			0xA001EFF0
 #define ADDR_BOOTLOADER_ID		0xA0000230
+#define ADDR_PKGID              0XA001F000
 
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09
@@ -54,7 +56,10 @@ typedef int ram_size_t;
 
 #define SIS_BOOTFLAG_P810       0x50383130
 /* Special Update Flag : 7501 Update by Uart */
-#define SERIAL_FLAG             0x7501
+#define UPDATE_MARK             0x7501
+#define NO_UPDATE_BOOT			0x6e62 //nb
+#define IS_UPDATE_BOOT			0x7562 //ub
+
 
 //GR UART CMD ID
 #define GR_CMD_ID               0x12

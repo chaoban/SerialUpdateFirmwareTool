@@ -15,6 +15,7 @@
 
 /* 修改的機制 */
 #define _CHAOBAN_RETRY              1
+#define _RETRY_GETFWINFO            1 //chaoban test 2023.5.17
 
 enum SIS_POWER_MODE {
     POWER_MODE_ERR = EXIT_ERR,
@@ -25,12 +26,13 @@ enum SIS_POWER_MODE {
 enum SIS_POWER_MODE sis_get_fw_mode();
 
 typedef struct {
-	bool main;
     bool bt;
     bool bt_a;
-    bool param;
     bool force;
+    bool jcp;
     bool jump;
+    bool main;
+    bool onlyparam;
 } updateParams;
 
 struct firmwareMap {
@@ -76,7 +78,6 @@ struct firmwareMap {
 		unsigned int priorLastTime;
 		unsigned int priorLastMark;
 		unsigned int priorLastID;
-
     } updateFwInfo;
 
     struct {
@@ -102,4 +103,5 @@ int verifyRxData(int length, uint8_t *buffer);
 int sisUpdateFlow(QSerialPort* serial, quint8 *sis_fw_data, updateParams updateCodeParam);
 int sisGetBootflag(QSerialPort* serial, quint32 *);
 int sisGetFwInfo(QSerialPort* serial, quint8 *chip_id, quint16 *task_id, quint8 *chip_type, quint16 *fw_version);
+int sisReadDataFromChip(QSerialPort* serial, quint32 address, int length, unsigned char *rdata);
 #endif // DOFIRMWAREUPDATE_H

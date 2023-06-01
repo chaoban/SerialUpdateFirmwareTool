@@ -9,11 +9,10 @@
 
 #### V0.3.0
 
-2023-5-11
+2023-5-24
 -Modify the Special Update Flag to "7501"
--Add updateParams and fix ba, b, p, jump, and force's flow
--//Add PKGID
--//Dump Update History (0x40a0)
--//Dump result.txt
--//Why x86 can not run
--//Disable Retry message
+-Modify message when Retry 0x81 and 0x83 commands
+-Retry when get firmware info fails.
+-Modify update flow when used -ba, -b, and -p parameters
+-Update Firmware Info of 0xa00040a0 and 0xa001e000
+-Display Update Firmware Info of 0xa00040a0
