@@ -9,7 +9,7 @@
 
 #### V0.3.0
 
-2023-5-24
+2023-6-7
 -Modify the Special Update Flag to "7501"
 -Modify message when Retry 0x81 and 0x83 commands
 -Retry when get firmware info fails.

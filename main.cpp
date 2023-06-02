@@ -191,8 +191,8 @@ int main(int argc, char *argv[])
      * ==============================
      */ 
 	 
-    if (bOnlyParam && bUpdateBootloader) {
-        printf("Attention: -p and -b is conflict\n");
+    if (bOnlyParam && (bUpdateBootloader || bUpdateBootloader_auto)) {
+        printf("Attention: -p and -b or -ba is conflict\n");
         return EXIT_BADARGU;
     }
     //Some argument still has NOT IMPLEMENT
@@ -232,7 +232,6 @@ int main(int argc, char *argv[])
     
     updateCodeParam.bt = bUpdateBootloader;
     updateCodeParam.bt_a = bUpdateBootloader_auto;
-    updateCodeParam.main = true;
     updateCodeParam.onlyparam = bOnlyParam;
     updateCodeParam.force = bForceUpdate;
     updateCodeParam.jcp = bJcp;

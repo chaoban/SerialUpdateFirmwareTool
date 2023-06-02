@@ -878,7 +878,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
     printf("Enter burningCode(), Header char: %x\n", fn[0]);
 #endif
 
-    /* (1) Clear Boot Flag
+    /* Clear Boot Flag
      *     ADDRESS: 0x1e000, Length=0x1000
      *     Clear boot-flag to zero
      */
@@ -889,8 +889,9 @@ bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
         return ret;
     }
 
-    if (updateCodeParam.main == true){
-        /* (2) Update Main Code Section 1
+    if (updateCodeParam.onlyparam != true) {
+
+        /* Update Main Code Section 1
          *     ADDRESS: 0x4000, Length=0x1A000
          */
         printf("Update Main Code Section 1 ...\n");
@@ -900,7 +901,7 @@ bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
             return ret;
         }
 
-        /* (3) Update Main Code Section 2
+        /* Update Main Code Section 2
          *     ADDRESS: 0x6000, Length=0x1000
          */
         printf("Update Main Code Section 2 ...\n");
@@ -909,50 +910,62 @@ bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
             printf("SiS update firmware fail at Main Code Section 2 ... \n");
             return ret;
         }
-    }
 
-    /* (4) Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc
+        /* Update fwinfo, regmem, defmem, THQAmem, hidDevDesc, hidRptDesc
      *     ADDRESS: 0x4000, Length=0x2000
      */
-    printf("Update firmware info ...\n");
-    ret = sisUpdateBlock(serial, fn, 0x00004000, 0x00002000);
-    if (ret == false) {
-        printf("SiS update firmware fail at info, regmem ...\n");
-        return ret;
-    }
+        printf("Update firmware info ...\n");
+        ret = sisUpdateBlock(serial, fn, 0x00004000, 0x00002000);
+        if (ret == false) {
+            printf("SiS update firmware fail at info, regmem ...\n");
+            return ret;
+        }
 
-    /* (5) Update bootloader (if need update_booloader)
+        /* Update bootloader (if need update_booloader)
      *     ADDRESS: 0x0, Length=0x4000
      *     (Notes: if need update bootloader)
      */
-    if (updateCodeParam.bt == true) {
-        printf("Update Boot loader ...\n");
-        ret = sisUpdateBlock(serial, fn, 0x00000000, 0x00004000);
+        if (updateCodeParam.bt == true) {
+            printf("Update Boot loader ...\n");
+            ret = sisUpdateBlock(serial, fn, 0x00000000, 0x00004000);
+            if (ret == false) {
+                printf("SiS update firmware fail at Boot loader ...\n");
+                return ret;
+            }
+        }
+        /* Update rodata
+     *     ADDRESS: 0x1d000, Length=0x2000
+     */
+        printf("Update Rodata and Boot Flag ...\n");
+        ret = sisUpdateBlock(serial, fn, 0x0001d000, 0x00002000);
         if (ret == false) {
-            printf("SiS update firmware fail at Boot loader ...\n");
+            printf("SiS update firmware fail at Rodata and Boot Flag\n");
             return ret;
         }
     }
-    /* (6) Update rodata
-     *     ADDRESS: 0x1d000, Length=0x2000
-     */
-    printf("Update Rodata and Boot Flag ...\n");
-    ret = sisUpdateBlock(serial, fn, 0x0001d000, 0x00002000);
-    if (ret == false) {
-        printf("SiS update firmware fail at Rodata and Boot Flag\n");
-        return ret;
+
+    if (updateCodeParam.onlyparam == true) {
+
+        /* Update Parameters
+         * Address: 0x00004000, Length=0x1000
+         */
+        printf("Burn Parameters ...\n");
+        ret = sisUpdateBlock(serial, fn, 0x00004000, 0x00001000);
+        if (ret == false) {
+            printf("SiS update firmware parameters failed\n");
+            return ret;
+        }
+
+        /* Burn Boot Flag
+         *     ADDRESS: 0x1e000, Length=0x1000
+         */
+        printf("Burn Boot Flag ...\n");
+        ret = sisUpdateBlock(serial, fn, 0x0001e000, 0x00001000);
+        if (ret == false) {
+            printf("SiS update firmware fail at Boot Flag\n");
+            return ret;
+        }
     }
-#if 0
-    /* (7) Burn Boot Flag
-     *     ADDRESS: 0x1e000, Length=0x1000
-     */
-    printf("Burn Boot Flag ...\n");
-    ret = sisUpdateBlock(serial, fn, 0x0001e000, 0x00001000);
-    if (ret == false) {
-        printf("SiS update firmware fail at Boot Flag\n");
-        return ret;
-    }
-#endif
 
     /* Reset */
 #if 1
@@ -1081,18 +1094,18 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get PKGID and compare it with Binary file
      */
-    if (updateCodeParam.jcp != true){
-        sisReadDataFromChip(serial, ADDR_PKGID, R_MAX_SIZE, tmpbuf);
-        QByteArray pkgid_ic(tmpbuf[BIT_RX_READ], 8);
+    sisReadDataFromChip(serial, ADDR_PKGID, R_MAX_SIZE, tmpbuf);
+    QByteArray pkgid_ic(tmpbuf[BIT_RX_READ], 8);
+    QByteArray pkgid_fw(sis_fw_data[0x4050], 8);
+    qDebug() << "PKGID of SIS Device: " << pkgid_ic;
+    qDebug() << "PKGID of Bin file: " << pkgid_fw;
 
-        QByteArray pkgid_fw(sis_fw_data[0x4050], 8);
+    bool bPkgidIsMatch = (pkgid_ic == pkgid_fw);
 
-        bool isEqual = (pkgid_ic == pkgid_fw);
-
-        if (isEqual == false) {
-            printf("PKGID not match, stop update firmware process\n");
-            return CT_EXIT_AP_FLOW_ERROR;
-        }
+    if ((bPkgidIsMatch == false) && (updateCodeParam.jcp == false))
+    {
+        printf("PKGID not match, stop update firmware process\n");
+        return CT_EXIT_AP_FLOW_ERROR;
     }
 
     /*
@@ -1337,6 +1350,29 @@ int sisUpdateFlow(QSerialPort* serial,
     printAddrData(sis_fw_data, " - Prior Last Time", 0x40c0, 5, false);
     printAddrData(sis_fw_data, " - Prior Last Mark", 0x40d0, 2, false);
     printAddrData(sis_fw_data, " - Prior Last ID", 0x40d2, 14, false);
+
+    print_sep();
+
+    /*
+     * Check Main Code CRC
+     */
+    sisReadDataFromChip(serial, ADDR_MAIN_CRC, R_MAX_SIZE, tmpbuf);
+    QByteArray mainCRC_ic(tmpbuf[BIT_RX_READ], 4);
+    QByteArray mainCRC_fw(sis_fw_data[0x4044], 4);
+    qDebug() << "Main Code CRC of SIS Device: " << mainCRC_ic;
+    qDebug() << "Main Code CRC of Bin file: " << mainCRC_fw;
+
+    bool bMainCrcIsMatch = (mainCRC_ic == mainCRC_fw);
+
+    if (updateCodeParam.onlyparam == true) {
+        if (bMainCrcIsMatch == true) {
+            printf("Only Update Parameters\n");
+        } else {
+			updateCodeParam.onlyparam = false;
+            printf("Due to Main Code differences, it can not only update the parameters. Please cancel the -p parameter\n");
+            return CT_EXIT_AP_FLOW_ERROR;
+        }
+    }
 
     print_sep();
 

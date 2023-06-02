@@ -38,6 +38,7 @@ typedef int ram_size_t;
 
 //FW ADDRESS
 #define ADDR_FW_INFO            0xA0004000
+#define ADDR_MAIN_CRC           0xA0004044
 #define ADDR_FWUPDATE_INFO      0xA00040A0
 #define ADDR_BOOT_FLAG			0xA001EFF0
 #define ADDR_BOOTLOADER_ID		0xA0000230

@@ -31,7 +31,6 @@ typedef struct {
     bool force;
     bool jcp;
     bool jump;
-    bool main;
     bool onlyparam;
 } updateParams;
 
