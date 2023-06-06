@@ -26,7 +26,7 @@ typedef struct {
 	bool jump;
 	bool l;
 	bool p;
-	bool r;
+    bool rcal;
     bool s;
 	bool v;
     int  V;
@@ -39,18 +39,18 @@ arg_t args[] = {
     {"com[0-16]","Specify updating firmware through serial com port.\n              Such as com3."},
     {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              Ex. --dbg={0|1}"},
 	{"--force",  "Force update firmware without considering version."},
-	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."},
+	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."}, 
     {"-a",       "Automatically detect the serial port connected to the SiS device for firmware update."},
     {"-b",       "Update the bootloader."},
     {"-ba",      "Update bootloader automatically."},
-    {"-nc",      "No need to confirm whether to update. Default is need to confirm."},
     {"-d",       "Dump firmware information of the device."},
 	{"-l",		 "Display the information of the firmware binary file."},
     {"-p",       "Only update parameters."},
-    {"-r",       "Reserve RO data."},
+    {"-rcal",    "Reserve Calibration settings."},
     {"-s",       "Scan and list all available serial ports in the host."},
     {"-v",		 "Display version and build information."},
     {"-w",       "Set the Wait time."},
+    {"-yes",     "No need to confirm whether to update. Default is need to confirm."},
     {"V",		 "Display Verbose debug message.The higher the level, the more debug messages are displayed.\n              Ex. V={1|2|3}"}
 };
 
@@ -70,7 +70,7 @@ args_t param = {
     .jump = 	false,
 	.l =		false,
     .p = 		false,
-    .r = 		false,
+    .rcal = 	false,
     .s = 		false,
     .v = 		false,
     .V = 0,
@@ -104,10 +104,10 @@ int process_args(int argc, char *argv[], args_t* param) {
                     else if (strcmp(argv[i], "-b") == 0) {
 						param->b = true;
                     }
-					else if (strcmp(argv[i], "-ba") == 0) {
+                    else if (strcmp(argv[i], "-ba") == 0) {
 						param->ba = true;
                     }
-                    else if (strcmp(argv[i], "-nc") == 0) {
+                    else if (strcmp(argv[i], "-yes") == 0) {
                         param->nc = true;
                     }
 					else if (strcmp(argv[i], "-d") == 0) {
@@ -119,9 +119,9 @@ int process_args(int argc, char *argv[], args_t* param) {
                     else if (strcmp(argv[i], "-h") == 0) {
                         param->h = true;
                     }
-                    else if (strcmp(argv[i], "--jcp") == 0) {
-                        param->jcp = true;
-                    }
+                    //else if (strcmp(argv[i], "-jcp") == 0) {
+                    //    param->jcp = true;
+                    //}
 					else if (strcmp(argv[i], "--jump") == 0) {
 						param->jump = true;
                     }
@@ -131,8 +131,8 @@ int process_args(int argc, char *argv[], args_t* param) {
 					else if (strcmp(argv[i], "-p") == 0) {
 						param->p = true;
                     }
-					else if (strcmp(argv[i], "-r") == 0) {
-						param->r = true;
+                    else if (strcmp(argv[i], "-rcal") == 0) {
+                        param->rcal = true;
                     }
 					else if (strcmp(argv[i], "-s") == 0) {
 						param->s = true;
@@ -144,6 +144,10 @@ int process_args(int argc, char *argv[], args_t* param) {
 						param->w = true;
                     }
                     break;
+                }
+                if (strcmp(argv[i], "-jcp") == 0) {
+                    param->jcp = true;
+                    found = 1;
                 }
                 if (strncmp(argv[i], "--dbg", 5) == 0) {
                     found = 1;

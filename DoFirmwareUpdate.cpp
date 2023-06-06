@@ -969,14 +969,14 @@ bool burningCode(QSerialPort* serial, quint8 *fn, updateParams updateCodeParam)
 
     /* Reset */
 #if 1
-    printf("Reset SiS Device ...");
+    printf("Reset SiS Device ... ");
     ret = sisResetCmd(serial);
     if (ret == false) {
         printf("\nSiS Reset device failed %d\n", ret);
         return ret;
     }
     else
-        printf("Success!\n");
+        printf("Success\n");
 #else
     printf("Temporarily canceled Reset SIS Device\n");
 #endif
@@ -1065,19 +1065,19 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Switch FW Mode
      */
-    printf("Switch Firmware Mode ...\n");
+    printf("Switch Firmware Mode ... ");
 #ifdef _CHAOBAN_RETRY
     do{
         count ++;
         bRet = sisSwitchCmdMode(serial);
         if (bRet == true) {
-            printf("Switch Firmware Mode Success in %i times\n", count);
+            printf("Success\n");
             count = 0;
             break;
         }
         msleep(10);
         if (count > 30) {
-            printf("Switch FW Mode retry %i times still failed\n", count);
+            printf("Retry %i times still failed\n", count);
             return CT_EXIT_FAIL;
         }
     }
@@ -1091,16 +1091,23 @@ int sisUpdateFlow(QSerialPort* serial,
 #endif
     //msleep(2000);//chaoban test 2023.4.7
 
+    print_sep();
+
     /*
      * Get PKGID and compare it with Binary file
      */
     sisReadDataFromChip(serial, ADDR_PKGID, R_MAX_SIZE, tmpbuf);
-    QByteArray pkgid_ic(tmpbuf[BIT_RX_READ], 8);
-    QByteArray pkgid_fw(sis_fw_data[0x4050], 8);
-    qDebug() << "PKGID of SIS Device: " << pkgid_ic;
-    qDebug() << "PKGID of Bin file: " << pkgid_fw;
 
-    bool bPkgidIsMatch = (pkgid_ic == pkgid_fw);
+    QByteArray pkgid_ic(reinterpret_cast<const char*>(&tmpbuf[BIT_RX_READ]), 8);
+    QByteArray pkgid_fw(reinterpret_cast<const char*>(&sis_fw_data[BIN_PKGID]), 8);
+    qDebug() << "PKGID Information:";
+    qDebug() << " SiS IC:" << pkgid_ic.toHex();
+    qDebug() << " Bin file:" << pkgid_fw.toHex();
+
+    bool bPkgidIsMatch = false;
+
+    if (pkgid_ic == pkgid_fw)
+        bPkgidIsMatch = true;
 
     if ((bPkgidIsMatch == false) && (updateCodeParam.jcp == false))
     {
@@ -1111,19 +1118,19 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get FW Information
      */
-    printf("Get Firmware Information ...\n");
+    printf("Get Firmware Information ... ");
 #ifdef _CHAOBAN_RETRY
     count = 0;
     do{
         count ++;
         if (count >= 20) {
-            printf("Get Firmware Information try %i times still failed\n", count);
+            printf("Retry %i times still failed\n", count);
             return CT_EXIT_FAIL;
         }
 
         ret = sisGetFwInfo(serial, &chip_id, &task_id, &chip_type, &fw_version);
         if (ret == EXIT_OK) {
-            printf("Get Firmware Information Success in %i times\n", count);
+            printf("Success\n");
             break;
         }
         msleep(500);
@@ -1173,7 +1180,7 @@ int sisUpdateFlow(QSerialPort* serial,
             return CT_EXIT_AP_FLOW_ERROR;
         }
     }else {
-        printf("Check Firmware Info Success\n");
+        printf("Firmware information checked successfully\n");
     }
 
       //chaoban test marked
@@ -1181,18 +1188,18 @@ int sisUpdateFlow(QSerialPort* serial,
     /*
      * Get BootFlag
      */
-    printf("Get BootFlag ...\n");
+    printf("Get BootFlag ... ");
 #ifdef _CHAOBAN_RETRY
     count = 0;
     do {
         count ++;
         if (count > 10) {
-            printf("Get BootFlag retry %i times still failed\n", count);
+            printf("Retry %i times still failed\n", count);
             return CT_EXIT_FAIL;
         }
         ret = sisGetBootflag(serial, &bootflag);
         if (ret == EXIT_OK) {
-            printf("Get BootFlag Success in %i times\n", count);
+            printf("Success\n");
             break;
         }
         msleep(1000);
@@ -1233,7 +1240,7 @@ int sisUpdateFlow(QSerialPort* serial,
      * Get Bootloader ID and Bootloader CRC
      * sisGetBootloaderId_Crc
      */
-    printf("Get Bootloader ID and Bootloader CRC ...");
+    printf("Get Bootloader ID and Bootloader CRC ... ");
     bRet = sisGetBootloaderId_Crc(serial, &bootloader_version, &bootloader_crc_version);
     if (bRet == false) {
         printf("Failure\n");
@@ -1299,7 +1306,29 @@ int sisUpdateFlow(QSerialPort* serial,
             printf("Only Update MainCode\n");
     }
     else {
-        printf("Force update Bootloader and MainCode\n");
+        printf("Set as mandatory update Bootloader and MainCode\n");
+    }
+
+    /*
+     * Check Main Code CRC
+     */
+    if (updateCodeParam.onlyparam == true) {
+        sisReadDataFromChip(serial, ADDR_MAIN_CRC, R_MAX_SIZE, tmpbuf);
+
+        QByteArray mainCRC_ic(reinterpret_cast<const char*>(&tmpbuf[BIT_RX_READ]), 4);
+        QByteArray mainCRC_fw(reinterpret_cast<const char*>(&sis_fw_data[0x4044]), 4);
+        qDebug() << "MainCode CRC:";
+        qDebug() << " SiS IC: " << mainCRC_ic.toHex();
+        qDebug() << " Bin file: " << mainCRC_fw.toHex();
+
+        if (mainCRC_ic == mainCRC_fw) {
+            printf("Only Update Parameters\n");
+            updateCodeParam.force = true;
+        } else {
+            updateCodeParam.onlyparam = false;
+            printf("Due to Main Code differences, it can not only update the parameters. Please cancel the -p parameter\n");
+            return CT_EXIT_AP_FLOW_ERROR;
+        }
     }
 	
 	// Record the current update was going to update bootloader or not.
@@ -1340,38 +1369,24 @@ int sisUpdateFlow(QSerialPort* serial,
 		if (BIT_RX_READ + 16 + i < sizeof(tmpbuf))
             sis_fw_data[0x40D0 + i] = tmpbuf[BIT_RX_READ + 16 + i];
 	}
-
-    printf("FW Update Information of 0xA00040A0\n");
-
-    printAddrData(sis_fw_data, " - Last Time", 0x40a0, 5, false);
-    printAddrData(sis_fw_data, " - Update Info", 0x40a5, 2, false);
-    printAddrData(sis_fw_data, " - Last Mark", 0x40b0, 2, false);
-    printAddrData(sis_fw_data, " - Last ID", 0x40b2, 14, false);
-    printAddrData(sis_fw_data, " - Prior Last Time", 0x40c0, 5, false);
-    printAddrData(sis_fw_data, " - Prior Last Mark", 0x40d0, 2, false);
-    printAddrData(sis_fw_data, " - Prior Last ID", 0x40d2, 14, false);
-
     print_sep();
+    printf("Update History of 0xA00040A0\n");
+    printAddrData(sis_fw_data, "Last Time", 0x40a0, 5, false);
+    printAddrData(sis_fw_data, "Update Info", 0x40a5, 2, false);
+    printAddrData(sis_fw_data, "Last Mark", 0x40b0, 2, false);
+    printAddrData(sis_fw_data, "Last ID", 0x40b2, 14, false);
+    printAddrData(sis_fw_data, "Prior Last Time", 0x40c0, 5, false);
+    printAddrData(sis_fw_data, "Prior Last Mark", 0x40d0, 2, false);
+    printAddrData(sis_fw_data, "Prior Last ID", 0x40d2, 14, false);
 
-    /*
-     * Check Main Code CRC
-     */
-    sisReadDataFromChip(serial, ADDR_MAIN_CRC, R_MAX_SIZE, tmpbuf);
-    QByteArray mainCRC_ic(tmpbuf[BIT_RX_READ], 4);
-    QByteArray mainCRC_fw(sis_fw_data[0x4044], 4);
-    qDebug() << "Main Code CRC of SIS Device: " << mainCRC_ic;
-    qDebug() << "Main Code CRC of Bin file: " << mainCRC_fw;
-
-    bool bMainCrcIsMatch = (mainCRC_ic == mainCRC_fw);
-
-    if (updateCodeParam.onlyparam == true) {
-        if (bMainCrcIsMatch == true) {
-            printf("Only Update Parameters\n");
-        } else {
-			updateCodeParam.onlyparam = false;
-            printf("Due to Main Code differences, it can not only update the parameters. Please cancel the -p parameter\n");
-            return CT_EXIT_AP_FLOW_ERROR;
+    // 保留Calibration參數
+    if (updateCodeParam.rcal == true) {
+        sisReadDataFromChip(serial, 0xa0005000, R_MAX_SIZE, tmpbuf);
+        for (int i = 0; i < 4; i++){
+            if (BIT_RX_READ + i < sizeof(tmpbuf))
+                sis_fw_data[0x5000 + i] = tmpbuf[BIT_RX_READ + i];
         }
+        printAddrData(sis_fw_data, "Reserve Calibration settings", 0x5000, 4, false);
     }
 
     print_sep();

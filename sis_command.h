@@ -42,7 +42,8 @@ typedef int ram_size_t;
 #define ADDR_FWUPDATE_INFO      0xA00040A0
 #define ADDR_BOOT_FLAG			0xA001EFF0
 #define ADDR_BOOTLOADER_ID		0xA0000230
-#define ADDR_PKGID              0XA001F000
+#define ADDR_PKGID              0xA001F000
+#define BIN_PKGID               0x4050
 
 #define SIS_REPORTID            0x09
 #define BUF_ACK_LSB             0x09

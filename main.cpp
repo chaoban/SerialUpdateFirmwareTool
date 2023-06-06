@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     bool bJump = false;
 	bool bList = false;
     bool bOnlyParam = false;
-    bool bReserveRODATA = false;
+    bool bReserveCalibartion = false;
     bool bWaitTime = false;
     int exitCode = CT_EXIT_AP_FLOW_ERROR;
 
@@ -169,10 +169,9 @@ int main(int argc, char *argv[])
         bOnlyParam = true;
         printf(" * Only update parameters\n");
     }
-    if (param.r) {
-        bReserveRODATA = true;
-        //TODO
-        printf(" * Reserve RO data HAS NOT SUPPORT YET\n");
+    if (param.rcal) {
+        bReserveCalibartion = true;
+        printf(" * Reserve Calibartion settings\n");
     }
     if (param.w) {
         bWaitTime = true;
@@ -196,9 +195,9 @@ int main(int argc, char *argv[])
         return EXIT_BADARGU;
     }
     //Some argument still has NOT IMPLEMENT
-    if (bReserveRODATA || bDump || bWaitTime) {
+    if (bDump || bWaitTime) {
 		SetConsoleTextAttribute(hConsole, FOREGROUND_YELLOW);
-        printf("Attention: -r, -d, and -w are not implement yet\n");
+        printf("Attention: -d, and -w are not implement yet\n");
 		SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
 	}
 #if 0
@@ -236,6 +235,7 @@ int main(int argc, char *argv[])
     updateCodeParam.force = bForceUpdate;
     updateCodeParam.jcp = bJcp;
     updateCodeParam.jump = bJump;
+    updateCodeParam.rcal = bReserveCalibartion;
 	print_sep();
 	
 	/* 選定Com Port */
@@ -287,7 +287,6 @@ lb_GetFile:
     if (bList == true)
         return EXIT_OK;
 
-    //TODO
 	/* 更新韌體資訊 */
     exitCode = UpdateFirmwareInfo(sis_fw_data);
 	
@@ -331,6 +330,8 @@ lb_GetFile:
     printf("\nThe process of updating the firmware will start.");
 	printf("\n");
     if (bNc == false) getUserInput();
+
+    print_sep();
 
     /*
      * 1. SISPEN_BRIDGE_DEBUG_DIS
@@ -685,8 +686,7 @@ int getFirmwareInfo(quint8 *sis_fw_data)
     printAddrData(sis_fw_data, "BootloaderCRC", 0x234, 4, false);
     //printAddrData(sis_fw_data, "SpecialUpdateFlag", 0x4000, 2, true);
     printAddrData(sis_fw_data, "CodeBaseTime", 0x4012, 4, false);
-    //printAddrData(sis_fw_data, "FWUpdateTime", 0x40a0, 5, false);
-    //printAddrData(sis_fw_data, "FWUpdateTool", 0x40a5, 2, true);
+    printAddrData(sis_fw_data, "Calibration Settings", 0x5000, 4, false);
     //printAddrData(sis_fw_data, "LastUpdateTime", 0x1e000, 4, false);
 	printAddrData(sis_fw_data, "BootFlag", 0x1eff0, 4, false);
 

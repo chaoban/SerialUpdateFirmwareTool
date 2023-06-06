@@ -32,6 +32,7 @@ typedef struct {
     bool jcp;
     bool jump;
     bool onlyparam;
+    bool rcal;
 } updateParams;
 
 struct firmwareMap {
