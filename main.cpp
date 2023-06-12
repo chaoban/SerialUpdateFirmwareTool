@@ -314,7 +314,14 @@ lb_GetFile:
      * UART預設值
      */
     // serial.setBaudRate(QSerialPort::Baud115200);
-    serial.setBaudRate(3000000);
+    if (param.baud == true) {
+        serial.setBaudRate(param.baudrate);
+        printf("Manually set the Baud Rate:%ibps\n", param.baudrate);
+    } else {
+        serial.setBaudRate(3000000);
+        printf("Default Baud Rate:3Mbps\n");
+    }
+
     serial.setDataBits(QSerialPort::Data8);
     serial.setParity(QSerialPort::NoParity);
     serial.setStopBits(QSerialPort::OneStop);

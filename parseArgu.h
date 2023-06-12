@@ -2,6 +2,8 @@
 #define PARSEARGU_H
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 void print_help(const char* programName);
 
@@ -16,6 +18,8 @@ typedef struct {
     bool a;
 	bool b;
     bool ba;
+    bool baud;
+    int baudrate;
     bool nc;
 	bool d;
     bool dbg;
@@ -37,6 +41,7 @@ arg_t args[] = {
 	{"-h",       "Display this help information."},
     {"@<file>",	 "Load/Update options from firmware. Extension name is 'bin'."},
     {"com[0-16]","Specify updating firmware through serial com port.\n              Such as com3."},
+    {"--baud",   "Manually set the Baud Rate [300bps-3Mbps]. The default value is 3Mbps.\n              Ex. --baud=115200"},
     {"--dbg",    "Manually enable or disable GR-Uard-Debug function.\n              Ex. --dbg={0|1}"},
 	{"--force",  "Force update firmware without considering version."},
 	{"--jump",   "Jump some parameter validation, go on even some firmware parameters check failed."}, 
@@ -60,6 +65,8 @@ args_t param = {
     .a = 		false,
     .b = 		false,
     .ba = 		false,
+    .baud =     false,
+    .baudrate = 0,
     .nc = 		false,
     .d = 		false,
     .dbg =      false,
@@ -85,6 +92,16 @@ void print_help(const char* programName) {
     for(unsigned int j = 0; j < sizeof(args)/sizeof(arg_t); j++) {
         printf("  %-10s: %s\n", args[j].arg, args[j].msg);
     }
+}
+
+int isNumeric(const char *str) {
+    // 檢查字串中的每個字元是否都是數字
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (!isdigit(str[i])) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 int process_args(int argc, char *argv[], args_t* param) {
@@ -162,6 +179,20 @@ int process_args(int argc, char *argv[], args_t* param) {
                     else {
                         param->dbg = false;
                         printf("Invalid argument for --dbg option. Valid values are = [0|1].\n");
+                        return -1;
+                    }
+                }
+                if (strncmp(argv[i], "--baud", 6) == 0) {
+                    found = 1;
+                    const char *baudParam = argv[i] + 7;
+                    if (isNumeric(baudParam)) {
+                        param->baudrate = atoi(baudParam);
+                        if ((param->baudrate <= 3000000) && (param->baudrate >= 300)) {
+                            param->baud = true;
+                        }
+                    }
+                    else {
+                        printf("Invalid argument for baud rate.\n");
                         return -1;
                     }
                 }

@@ -2,9 +2,9 @@
 
 ### QT版本
 
-#### 	QT Creator 5.0.2
+#### 	QT Creator 10.0.1
 
-#### 	Based on QT 5.15.2 (MSVC 2019, 64 bit)
+#### 	Based on QT 6.4.3 (MSVC 2019, x86_64)
 
 
 
@@ -30,6 +30,6 @@
 
 ```C
 #define MAIN_VERSION 0
-#define SUB_VERSION 2
-#define LAST_VERSION 1
+#define SUB_VERSION 3
+#define LAST_VERSION 0
 ```
