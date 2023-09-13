@@ -4,7 +4,7 @@
 
 #define MAIN_VERSION 0
 #define SUB_VERSION 3
-#define LAST_VERSION 0
+#define LAST_VERSION 1
 
 #define BUILD_DATE __DATE__
 #define BUILD_TIME __TIME__
@@ -13,7 +13,7 @@ void printVersion();
 
 void printVersion()
 {
-    printf("SiS Update Pen Firmware tool.(Uart interface) Version %d.%d.%d  ",
+    printf("SiS Pen Firmware Update Tool.(UART Interface) Version %d.%d.%d  ",
            MAIN_VERSION,
            SUB_VERSION,
            LAST_VERSION);

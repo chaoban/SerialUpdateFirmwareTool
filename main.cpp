@@ -1,7 +1,9 @@
 ﻿/**************************************
  * SIS UART UPDATE PEN FIRMWARE TOOL
  * Date: 2023.4.21
+ * Author: Chao Pang Wang
  **************************************/
+
 #include <QCoreApplication>
 #include <QSettings>
 #include <QStringList>
@@ -37,16 +39,19 @@ extern void print_sep();
 extern void printAddrData(quint8* sis_fw_data, const char* str, quint32 address, int length, bool bcb);
 extern DateTime getCurrentDateTime();
 
-int occupiedPortCount = 0;
-int timeOutPortCount = 0;
-bool mismatchKey = FALSE;
 /* 讀取韌體檔案用 */
 quint8 *sis_fw_data; //unsigned char * sis_fw_data;
 extern QByteArray FirmwareString;
+
 /* 建立FW資訊用 */
 firmwareMap binaryMap;
+
 /* Dump data用 */
 int GLOBAL_DEBUG_VERBOSE = 0;
+
+int occupiedPortCount = 0;
+int timeOutPortCount = 0;
+bool mismatchKey = FALSE;
 
 int main(int argc, char *argv[])
 {
@@ -123,14 +128,14 @@ int main(int argc, char *argv[])
         printf(" * Automatically detect the serial port for SiS Device\n");
     }
     if (param.dbg) {
-        if (param.dbgMode == 1) {
-            // TODO
-            printf("Enable GR Uart Debug Function\n");
-        }
         if (param.dbgMode == 0) {
             // TODO
             printf("Disable GR Uart Debug Function\n");
+        } else if (param.dbgMode == 1) {
+            // TODO
+            printf("Enable GR Uart Debug Function\n");
         }
+        SetConsoleTextAttribute(hConsole, consoleInfo.wAttributes);
         return EXIT_OK;
     }
     /*

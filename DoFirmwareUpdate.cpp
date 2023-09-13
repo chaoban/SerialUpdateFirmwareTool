@@ -18,6 +18,7 @@
 #include "DoFirmwareUpdate.h"
 #include "sis_command.h"
 #include "SiSAdapter.h"
+
 QByteArray buffer;
 const unsigned char start[2] = {0x0e, 0x0e};
 int waitCount = 0;
@@ -26,6 +27,7 @@ extern void sis_Make_83_Buffer( quint8 *, unsigned int, int );
 extern void sis_Make_84_Buffer( quint8 *, const quint8 *, int);
 extern quint8 sis_Calculate_Output_Crc( quint8* buf, int len );
 extern int GLOBAL_DEBUG_VERBOSE;
+
 /*
  * Serial Write Commands
  * Return 0 = OK, others failed
@@ -1098,16 +1100,31 @@ int sisUpdateFlow(QSerialPort* serial,
      */
     sisReadDataFromChip(serial, ADDR_PKGID, R_MAX_SIZE, tmpbuf);
 
-    QByteArray pkgid_ic(reinterpret_cast<const char*>(&tmpbuf[BIT_RX_READ]), 8);
-    QByteArray pkgid_fw(reinterpret_cast<const char*>(&sis_fw_data[BIN_PKGID]), 8);
+    QByteArray pkgid_ic(reinterpret_cast<const char*>(&tmpbuf[BIT_RX_READ]), 8);	// 0x1f000
+    QByteArray pkgid_fw(reinterpret_cast<const char*>(&sis_fw_data[BIN_PKGID]), 8); // 0x04050
     qDebug() << "PKGID Information:";
     qDebug() << " SiS IC:" << pkgid_ic.toHex();
     qDebug() << " Bin file:" << pkgid_fw.toHex();
 
     bool bPkgidIsMatch = false;
-
-    if (pkgid_ic == pkgid_fw)
-        bPkgidIsMatch = true;
+	
+	if (pkgid_ic.at(0) == char(0xf5) &&
+		pkgid_ic.at(1) == char(0xf7) &&
+		pkgid_ic.at(6) == char(0xf4) &&
+		pkgid_ic.at(7) == char(0xfc) &&
+		
+		pkgid_fw.at(0) == char(0xf5) &&
+		pkgid_fw.at(1) == char(0xf7) &&
+		pkgid_fw.at(6) == char(0xf4) &&
+		pkgid_fw.at(7) == char(0xfc)){
+			
+			QByteArray gid_ic(reinterpret_cast<const char*>(&tmpbuf[BIT_RX_READ + 2]), 3);
+			QByteArray gid_fw(reinterpret_cast<const char*>(&sis_fw_data[BIN_PKGID + 2]), 3);
+			
+			if (gid_ic == gid_fw)
+				bPkgidIsMatch = true;
+		}
+	
 
     if ((bPkgidIsMatch == false) && (updateCodeParam.jcp == false))
     {

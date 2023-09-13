@@ -31,5 +31,5 @@
 ```C
 #define MAIN_VERSION 0
 #define SUB_VERSION 3
-#define LAST_VERSION 0
+#define LAST_VERSION 1
 ```
