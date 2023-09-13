@@ -6,7 +6,7 @@
 
 #### V0.3.1
 
-2023-8-30
+2023-9-13
 -Modify the GID verification mechanism
 -Fixed a bug to resolve the issue of incorrect font colors in the terminal
 -Remove Dummy code of CRC
